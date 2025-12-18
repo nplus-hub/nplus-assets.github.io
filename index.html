@@ -1,47 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Asset Manager</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <style>
+        :root { --bg: #f8f9fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; --drive: #34a853; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
+        .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e4e8; position: relative; }
+        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; z-index: 10; }
+        .badge-gh { background: var(--dark); }
+        .badge-gd { background: var(--drive); }
+        .preview { width: 100%; height: 160px; background: #eee; display: flex; align-items: center; justify-content: center; }
+        .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
+        .card-body { padding: 15px; }
+        .file-name { font-weight: bold; font-size: 13px; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-group { display: flex; gap: 5px; }
+        .btn { flex: 1; padding: 8px; font-size: 11px; border-radius: 4px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>All Assets</h1>
+    <a href="https://github.com/nplus-hub/my-assets/upload/main" target="_blank" class="admin-btn">GitHubへアップロード</a>
+</div>
+
 <div class="container" id="gallery">
-    <p id="msg">ドライブから素材を取得中...</p>
+    <p id="msg">アセットを読み込み中...</p>
 </div>
 
 <script>
-    const GAS_URL = "あなたの新しいGASウェブアプリURL";
+    const GITHUB_USER = "nplus-hub";
+    const GITHUB_REPO = "my-assets";
+    const GAS_URL = "あなたのGASウェブアプリURL"; // ★GASのURLに差し替え
 
-    async function loadFromDrive() {
-        const msg = document.getElementById('msg');
-        try {
-            const res = await fetch(GAS_URL);
-            if (!res.ok) throw new Error('ネットワーク応答が正常ではありません');
-            
-            const files = await res.json();
-            const gallery = document.getElementById('gallery');
-            msg.remove();
+    const gallery = document.getElementById('gallery');
 
-            if (files.length === 0) {
-                gallery.innerHTML = "<p>フォルダにファイルが見つかりません。</p>";
-                return;
-            }
+    // カードを生成する共通関数
+    function createCard(name, url, type, source) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const badgeClass = source === 'GitHub' ? 'badge-gh' : 'badge-gd';
+        
+        let content = '📄';
+        if (type === 'img') content = `<img src="${url}" loading="lazy" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Preview%20Error'">`;
+        else if (type === 'vid') content = `<video src="${url}" controls></video>`;
+        else if (type === '3d') content = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
 
-            files.forEach(file => {
-                // ドライブの画像を表示するための最も正確なURL形式
-                const imageUrl = `https://lh3.googleusercontent.com/u/0/d/${file.id}`;
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="preview"><img src="${imageUrl}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Preview%20Error'"></div>
-                    <div class="file-name">${file.name}</div>
-                    <button class="btn" onclick="copyToClipboard('${imageUrl}')">URLをコピー</button>
-                `;
-                gallery.appendChild(card);
-            });
-        } catch (e) {
-            msg.innerText = "読み込みエラー: " + e.message + "\nGASのURLが正しいか、デプロイ設定が「全員」になっているか確認してください。";
-            console.error(e);
-        }
+        card.innerHTML = `
+            <div class="badge ${badgeClass}">${source}</div>
+            <div class="preview">${content}</div>
+            <div class="card-body">
+                <div class="file-name">${name}</div>
+                <div class="btn-group">
+                    <a href="${url}" target="_blank" class="btn btn-primary">開く</a>
+                    <button class="btn" onclick="copyText('${url}', this)">URLコピー</button>
+                </div>
+            </div>`;
+        gallery.appendChild(card);
     }
 
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => alert("URLをコピーしました"));
-    }
-
-    loadFromDrive();
-</script>
+    function copyText(text, btn) {
+        navigator.clipboard.write
