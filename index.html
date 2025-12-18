@@ -2,89 +2,74 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager</title>
     <style>
-        :root { --bg: #f4f7f6; --card: #ffffff; --gh: #24292f; --gd: #34a853; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; margin: 0; }
-        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1000px; margin: 0 auto 20px; border-bottom: 2px solid #ddd; padding: 10px 0; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; border: 1px solid #eee; }
-        .badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; }
-        .badge-gh { background: var(--gh); }
-        .badge-gd { background: var(--gd); }
-        .preview { width: 100%; height: 150px; background: #eee; display: flex; align-items: center; justify-content: center; }
-        .preview img { width: 100%; height: 100%; object-fit: contain; }
-        .card-body { padding: 12px; }
-        .file-name { font-size: 12px; font-weight: bold; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn { width: 100%; padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #eee; position: relative; }
+        .badge { position: absolute; top: 5px; right: 5px; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; z-index: 5; }
+        .preview { width: 100%; height: 140px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; }
+        .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .card-body { padding: 10px; }
+        .file-name { font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn { width: 100%; margin-top: 8px; padding: 5px; font-size: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<div class="header">
-    <h2>Assets</h2>
-    <a href="https://github.com/nplus-hub/my-assets/upload/main" target="_blank" style="font-size: 12px; color: #666;">＋追加</a>
-</div>
 
 <div class="container" id="gallery">読み込み中...</div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzDkXxfI5GB-WlOE4PYAazoxl6P_AEIIddZrkftIGmDZrYoTOy8_-bLe_pubN6db_PcRg/exec"; // ★ここに最新のURLを
+    // ★最新のGAS URLをここに貼り付け
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzDkXxfI5GB-WlOE4PYAazoxl6P_AEIIddZrkftIGmDZrYoTOy8_-bLe_pubN6db_PcRg/exec"; 
 
-    function createCard(name, url, source) {
+    function createCard(name, url, source, color) {
         const card = document.createElement('div');
         card.className = 'card';
-        const badgeClass = source === 'GitHub' ? 'badge-gh' : 'badge-gd';
         card.innerHTML = `
-            <div class="badge ${badgeClass}">${source}</div>
+            <div class="badge" style="background:${color}">${source}</div>
             <div class="preview"><img src="${url}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x150.png?text=No%20Image'"></div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
-                <button class="btn" onclick="copyText('${url}', this)">URLをコピー</button>
+                <button class="btn" onclick="navigator.clipboard.writeText('${url}')">URLをコピー</button>
             </div>`;
         document.getElementById('gallery').appendChild(card);
-    }
-
-    function copyText(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const old = btn.innerText; btn.innerText = "OK!";
-            setTimeout(() => btn.innerText = old, 1000);
-        });
     }
 
     async function init() {
         const gallery = document.getElementById('gallery');
         
-        // 1. GitHub
+        // 1. GitHub読み込み
         try {
             const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`);
             const data = await res.json();
             if(Array.isArray(data)) {
                 data.forEach(f => {
-                    // index.html以外、かつファイル（typeがfile）のみ表示
-                    if(f.name !== 'index.html' && f.type === 'file') {
-                        createCard(f.name, f.download_url, 'GitHub');
+                    // index.html以外で、拡張子があるものだけ表示
+                    if(f.name.includes('.') && f.name !== 'index.html') {
+                        // raw.githubusercontentURL を使うことで確実に表示
+                        const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${f.name}`;
+                        createCard(f.name, rawUrl, 'GitHub', '#24292f');
                     }
                 });
             }
-        } catch(e) { console.error(e); }
+        } catch(e) {}
 
-        // 2. Google Drive
+        // 2. Google Drive読み込み
         try {
             const res = await fetch(GAS_URL);
             const driveData = await res.json();
             driveData.forEach(f => {
                 if(!f.error) {
                     const url = f.thumbnail || `https://drive.google.com/uc?export=view&id=${f.id}`;
-                    createCard(f.name, url, 'Drive');
+                    createCard(f.name, url, 'Drive', '#34a853');
                 }
             });
-        } catch(e) { console.error(e); }
-
-        if (gallery.firstChild.nodeType === 3) gallery.firstChild.remove();
+        } catch(e) {}
+        
+        if (gallery.innerText.includes('読み込み中')) gallery.innerText = '';
     }
     init();
 </script>
