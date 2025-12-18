@@ -2,57 +2,38 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Full Security Edition</title>
+    <title>Asset Manager Pro</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
-        
-        /* プレビュー・アイコンエリア */
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        /* アイコン表示（GLBや読み込み待ち用） */
         .icon-box { text-align: center; z-index: 5; position: relative; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
         .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
-
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: white; z-index: 10; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
-        .btn-del:hover { background: #ffeef0; }
-
-        /* 数字入力専用モーダル */
         #pass-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 300px; }
-        .modal-content input { width: 100%; font-size: 28px; text-align: center; padding: 12px; margin: 20px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .modal-btns { display: flex; gap: 10px; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; width: 280px; }
+        .modal-content input { width: 100%; font-size: 32px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <form id="delete-form" action="" method="get" style="display:none;">
-        <input type="hidden" name="delId" id="form-del-id">
-        <input type="hidden" name="pass" id="form-pass">
-    </form>
-
     <div id="pass-modal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">削除の確認</h3>
-            <p style="color:#666; font-size:14px;">数字のパスコードを入力してください</p>
-            <input type="tel" 
-                   id="pass-input" 
-                   pattern="\d*" 
-                   inputmode="numeric" 
-                   placeholder="****" 
-                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-            <div class="modal-btns">
-                <button class="btn" onclick="closeModal()">キャンセル</button>
-                <button class="btn btn-del" onclick="submitDelete()">削除実行</button>
+            <h3 style="margin:0">削除確認</h3>
+            <p style="font-size:12px; color:#666">パスコード(数字)を入力</p>
+            <input type="tel" id="pass-input" pattern="\d*" inputmode="numeric" placeholder="****" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <div style="display:flex; gap:10px">
+                <button class="btn" onclick="closeModal()">戻る</button>
+                <button class="btn btn-del" id="confirm-del-btn">削除</button>
             </div>
         </div>
     </div>
@@ -62,50 +43,44 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgLYKuBOi4BgtRvA0_a-424IqOOG0f-NJnUJ2EXr2hpZ1bCVt0NyjDFdCqQbWNMa-djyiUEXWhaSHVQMtyTUnbU_umjTzoNYI3yo3rfrBS8H8ggMFrHU_c_aErXXdm5c0HZIZls9EdObjTCg5EhQl-GM0uWy02NMeTjKtsCOuf1tAbgrX2amni9EMArzJnv107avobXA9tgdPBW-TGGpkk7tv_WvvC59a7BTWFpZGp7eNeqeeaPLIpZe_0Ff-ZETvGBc6QrOwrIA9JSOJ2evwpv0vVi1eT-h9M7dtfB&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★ここに最新のデプロイURLを貼ってください
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi4Hu4m_zXNRPYoY0GGzezBXUgWK8jSbsKpjx93VsOLCMIMeXvKqQLjc-l6K-y6YGDfbfK44sjEXsghBZxPNVscCq_5IkIXfjtdAlEqjDXmbSH4f9ymOtDPMwl1fTUW7Yxr83bdsowDHdQiC1xrcLX11PLIqlOTB2fjwwhmWg9HNvFs-eCX5ah49tpIUzqEo0lm4dodHdMmitB_8qF1yczv2Wkj_Jq3HMdpFajU_-j0fYjBMU9CG9CD7lhkiu9TReCLNn3sFK8EH-UMOkV_54YOCVfq3LJO4viDuOHV&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★必ず新しくデプロイしたURLに貼り替えてください
+
+    let currentDeleteId = null;
+    let currentCardElement = null;
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
-    // ファイル情報判定（3D判定強化版）
     function getFileInfo(name) {
         const lowerName = name.toLowerCase();
-        // 拡張子がglb/gltf、または名前に「glb」が含まれる場合は3Dとして扱う
         const isGlb = lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.includes('glb');
-        
         if (isGlb) return { emoji: '📦', label: 'GLB', isGlb: true };
-        
         const extMatch = name.match(/\.([a-z0-9]+)$/i);
         const ext = extMatch ? extMatch[1].toLowerCase() : "";
-        const map = {'pdf':'📄','txt':'📝','md':'📝','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️','js':'📜','css':'🎨'};
+        const map = {'pdf':'📄','txt':'📝','md':'📝','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
         return { emoji: map[ext] || '📄', label: ext.toUpperCase() || 'FILE', isGlb: false };
     }
 
-    // 削除モーダルの制御
-    function openModal(fileId) {
-        document.getElementById('form-del-id').value = fileId;
+    function openModal(fileId, cardElement) {
+        currentDeleteId = fileId;
+        currentCardElement = cardElement;
         document.getElementById('pass-modal').style.display = 'flex';
         const input = document.getElementById('pass-input');
         input.value = '';
         input.focus();
     }
-    function closeModal() {
-        document.getElementById('pass-modal').style.display = 'none';
-    }
+    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
 
-    // 削除の送信（フォーム送信方式）
-    function submitDelete() {
+    // 削除：ページ移動させないために「Imageリクエスト」を使用
+    document.getElementById('confirm-del-btn').onclick = () => {
         const pass = document.getElementById('pass-input').value;
-        if (!pass) {
-            alert("パスコードを入力してください");
-            return;
-        }
-        const form = document.getElementById('delete-form');
-        form.action = GAS_URL;
-        document.getElementById('form-pass').value = pass;
-        form.submit(); // ブラウザの標準機能で送信（通信エラーを回避）
-    }
+        if (!pass) return;
+        closeModal();
+        const img = new Image();
+        img.src = `${GAS_URL}?delId=${currentDeleteId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
+        alert("削除命令を送信しました。");
+        currentCardElement.remove();
+    };
 
-    // カードの生成
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
         const info = getFileInfo(name);
@@ -125,25 +100,25 @@
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" onclick="openModal('${fileId}')">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
         gallery.appendChild(card);
 
-        const previewArea = card.querySelector('.preview');
         const iconBox = card.querySelector('.icon-box');
+        const previewArea = card.querySelector('.preview');
 
         if (isDrive) {
-            // GLB関係以外ならGoogle Driveプレビューを表示
             if (!info.isGlb) {
                 const iframe = document.createElement('iframe');
                 iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 iframe.onload = () => { iconBox.style.display = 'none'; };
                 previewArea.appendChild(iframe);
             }
+            const delBtn = card.querySelector(`#del-${fileId}`);
+            delBtn.onclick = () => openModal(fileId, card);
         } else {
-            // GitHub用プレビューロジック
             const ext = name.split('.').pop().toLowerCase();
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
                 const img = document.createElement('img');
@@ -152,34 +127,24 @@
                 previewArea.appendChild(img);
             } else if (info.isGlb) {
                 const mv = document.createElement('model-viewer');
-                mv.src = url;
-                mv.setAttribute('auto-rotate', '');
-                mv.setAttribute('camera-controls', '');
+                mv.src = url; mv.setAttribute('auto-rotate', ''); mv.setAttribute('camera-controls', '');
                 mv.onload = () => { iconBox.style.display = 'none'; };
                 previewArea.appendChild(mv);
             }
         }
     }
 
-    // 初期化
     async function init() {
-        // GitHubから取得
+        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
-                if(Array.isArray(data)) {
-                    data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-                }
+                if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-
-        // Google Driveから取得（getFilesパラメータを使用）
-        fetch(`${GAS_URL}?getFiles=true`)
-            .then(r => r.json()).then(data => {
-                if (Array.isArray(data)) {
-                    data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-                }
-            }).catch(err => console.error("Drive取得エラー:", err));
+        // Drive 一覧取得
+        fetch(`${GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
+            if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
+        }).catch(e => console.error("表示エラー:", e));
     }
-
     init();
 </script>
 </body>
