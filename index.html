@@ -7,7 +7,7 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         :root { --bg: #f8f9fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; --drive: #34a853; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; }
         .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
         .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
@@ -38,11 +38,11 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "あなたのGASウェブアプリURL"; // ★GASのURLに差し替え
+    // ★【ここに貼り付け】GASのウェブアプリURL（末尾が /exec のもの）
+    const GAS_URL = "あなたのGASウェブアプリURL"; 
 
     const gallery = document.getElementById('gallery');
 
-    // カードを生成する共通関数
     function createCard(name, url, type, source) {
         const card = document.createElement('div');
         card.className = 'card';
@@ -50,8 +50,8 @@
         
         let content = '📄';
         if (type === 'img') content = `<img src="${url}" loading="lazy" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Preview%20Error'">`;
-        else if (type === 'vid') content = `<video src="${url}" controls></video>`;
-        else if (type === '3d') content = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
+        else if (type === 'vid') content = `<video src="${url}" controls style="width:100%; height:100%;"></video>`;
+        else if (type === '3d') content = `<model-viewer src="${url}" auto-rotate camera-controls style="width:100%; height:100%;"></model-viewer>`;
 
         card.innerHTML = `
             <div class="badge ${badgeClass}">${source}</div>
@@ -67,4 +67,51 @@
     }
 
     function copyText(text, btn) {
-        navigator.clipboard.write
+        navigator.clipboard.writeText(text).then(() => {
+            const old = btn.innerText; btn.innerText = "完了";
+            setTimeout(() => btn.innerText = old, 1000);
+        });
+    }
+
+    async function init() {
+        const msg = document.getElementById('msg');
+
+        // 1. GitHubのファイルを読み込む
+        try {
+            const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`);
+            const files = await res.json();
+            if (Array.isArray(files)) {
+                files.forEach(file => {
+                    if (file.name === "index.html" || file.name.startsWith('.') || file.type === "dir") return;
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    let type = 'file';
+                    if (['png','jpg','jpeg','gif','webp'].includes(ext)) type = 'img';
+                    else if (['mp4','webm'].includes(ext)) type = 'vid';
+                    else if (['glb','gltf'].includes(ext)) type = '3d';
+                    createCard(file.name, `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/${file.name}`, type, 'GitHub');
+                });
+            }
+        } catch (e) { console.error("GitHub Error:", e); }
+
+        // 2. Googleドライブのファイルを読み込む
+        if (GAS_URL.includes("http")) {
+            try {
+                const res = await fetch(GAS_URL);
+                const driveFiles = await res.json();
+                if (Array.isArray(driveFiles)) {
+                    driveFiles.forEach(file => {
+                        // ドライブの直リンクを生成
+                        const driveUrl = `https://drive.google.com/uc?export=view&id=${file.id}`;
+                        createCard(file.name, driveUrl, 'img', 'Drive');
+                    });
+                }
+            } catch (e) { console.error("Drive Error:", e); }
+        }
+
+        if (msg) msg.remove();
+    }
+
+    init();
+</script>
+</body>
+</html>
