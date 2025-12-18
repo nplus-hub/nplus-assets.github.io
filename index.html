@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Stable Edition</title>
+    <title>Asset Manager Pro - Official Stable</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -21,15 +21,17 @@
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
         .btn-del:hover { background: #ffeef0; }
+        .error-msg { color: #cf222e; padding: 20px; background: #fff; border-radius: 8px; border: 1px solid #cf222e; margin-bottom: 20px; display: none; }
     </style>
 </head>
 <body>
-<div id="gallery" class="container"></div>
+    <div id="error-display" class="error-msg"></div>
+    <div id="gallery" class="container"></div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyYwYfOvA7VFaHOTE5DImBRzoqKav4yc7AC3xE1kjAY4avD87f3DzADjCmjn6Yx1sF-lw/exec"; 
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLj0sGCZ5ai1DDpOw6WF8kEebq-JBZwdA_OkXS8fy1JBXCbFmNjjG3iGQ-hH2KjbWo4FYo-Zvk6buZtvEqqAeq5QBZserhTFn2mPuQFok0C41jPR_XjAym6YmIipHH0qkWVRfugEMunkfr3sHkGe3mTSt_8tb5HxcN7kVkJs_XgS9yTCJFcIwJ_N_6Hr35eZvIoM-BmU35MoLLXEO5LlruUjB3QDQ_L5oXqeXseCrAGgvDdB1r26qwXWMmgncx4UGJRoBVjdMxJ6a3wMPYhz7vShuEmcIt9wREYtGmBz&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新しくデプロイしたURLを貼ってください
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
@@ -44,13 +46,13 @@
             const response = await fetch(`${GAS_URL}?delId=${fileId}`);
             const result = await response.json();
             if (result.status === "success") {
-                alert("削除しました。");
+                alert("ゴミ箱へ移動しました。");
                 cardElement.remove();
             } else {
-                alert("エラー: " + result.message);
+                alert("削除エラー: " + result.message);
             }
         } catch (e) {
-            alert("通信エラー。GASのデプロイ設定（全員）を確認してください。");
+            alert("通信エラー。GASのURLとデプロイ設定（全員）を確認してください。");
         }
     }
 
@@ -75,7 +77,7 @@
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="delBtn-${fileId}">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" id="btn-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
@@ -86,7 +88,7 @@
 
         if (isDrive) {
             previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
-            const delBtn = card.querySelector(`#delBtn-${fileId}`);
+            const delBtn = card.querySelector(`#btn-${fileId}`);
             if (delBtn) delBtn.onclick = () => deleteFile(fileId, card);
         } else {
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
@@ -102,16 +104,24 @@
     }
 
     async function init() {
-        // GitHub
+        // GitHub取得
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-            }).catch(e => console.error(e));
+            }).catch(e => console.error("GitHub Error:", e));
 
-        // Drive
+        // Drive取得
         fetch(GAS_URL).then(r => r.json()).then(data => {
-            if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-        }).catch(e => console.error(e));
+            if (Array.isArray(data)) {
+                data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
+            } else if (data.status === "error") {
+                const errDiv = document.getElementById('error-display');
+                errDiv.style.display = 'block';
+                errDiv.innerText = "Drive取得エラー: " + data.message;
+            }
+        }).catch(e => {
+            console.error("Drive Fetch Error:", e);
+        });
     }
     init();
 </script>
