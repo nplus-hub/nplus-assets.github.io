@@ -2,25 +2,47 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Manager Pro - Maintainable Edition</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary-btn: #fafbfc;
+            --danger-btn: #cf222e;
+            --text-main: #333;
+        }
+
+        body { font-family: -apple-system, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--text-main); }
+        
+        /* ギャラリーレイアウト */
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
+        
+        /* カードデザイン */
+        .card { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
+        
+        /* プレビューエリア */
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1; }
-        .icon-box { text-align: center; z-index: 5; position: relative; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* アイコン表示 */
+        .icon-box { text-align: center; z-index: 5; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
         .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
-        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: white; z-index: 10; }
-        .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
+
+        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; z-index: 10; }
+        .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
+        
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-del { border-color: #cf222e; color: #cf222e; }
+        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: var(--primary-btn); border-radius: 6px; font-size: 12px; font-weight: bold; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn-del { border-color: var(--danger-btn); color: var(--danger-btn); }
+
+        /* 削除モーダル */
         #pass-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; width: 280px; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 12px; text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content input { width: 100%; font-size: 32px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
@@ -30,7 +52,7 @@
         <div class="modal-content">
             <h3 style="margin:0">削除確認</h3>
             <p style="font-size:12px; color:#666">パスコード(数字)を入力</p>
-            <input type="tel" id="pass-input" pattern="\d*" inputmode="numeric" placeholder="****" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <input type="tel" id="pass-input" pattern="\d*" inputmode="numeric" placeholder="****" oninput="validateNumber(this)">
             <div style="display:flex; gap:10px">
                 <button class="btn" onclick="closeModal()">戻る</button>
                 <button class="btn btn-del" id="confirm-del-btn">削除</button>
@@ -41,28 +63,49 @@
     <div id="gallery" class="container"></div>
 
 <script>
-    const GITHUB_USER = "nplus-hub";
-    const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwyWwpt-LarVIn-CAugPdHWa2HOV6iNU3n3jTdb3NSIGpvRQ-qGSwcElQ7AMWQA4SRUPA/exec"; // ★必ず新しくデプロイしたURLに貼り替えてください
+    /**
+     * 【メンテナンス設定】
+     */
+    const SETTINGS = {
+        GITHUB: { USER: "nplus-hub", REPO: "my-assets" },
+        GAS_URL: "https://script.google.com/macros/s/AKfycbz_4egWP_65OVharrZiA6Ujqr-YEc0e7BZSpRvesbWjdQRNEavzyW9ySp_C3sXQKw3XfA/exec", // ★最新のURLに貼り替えてください
+        EMOJI_MAP: {
+            'pdf':'📄', 'txt':'📝', 'md':'📝', 'zip':'📚', 
+            'mp3':'🎵', 'png':'🖼️', 'jpg':'🖼️', 'gif':'🖼️', 'webp':'🖼️'
+        }
+    };
 
-    let currentDeleteId = null;
-    let currentCardElement = null;
+    let state = { currentId: null, currentElement: null };
 
+    // 特殊文字エスケープ
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
-    function getFileInfo(name) {
-        const lowerName = name.toLowerCase();
-        const isGlb = lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.includes('glb');
-        if (isGlb) return { emoji: '📦', label: 'GLB', isGlb: true };
-        const extMatch = name.match(/\.([a-z0-9]+)$/i);
-        const ext = extMatch ? extMatch[1].toLowerCase() : "";
-        const map = {'pdf':'📄','txt':'📝','md':'📝','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
-        return { emoji: map[ext] || '📄', label: ext.toUpperCase() || 'FILE', isGlb: false };
+    // 数字以外の入力を排除
+    function validateNumber(el) {
+        el.value = el.value.replace(/[^0-9]/g, '');
     }
 
-    function openModal(fileId, cardElement) {
-        currentDeleteId = fileId;
-        currentCardElement = cardElement;
+    /**
+     * ファイル判定ロジック
+     */
+    function getFileMeta(name) {
+        const lower = name.toLowerCase();
+        const ext = name.split('.').pop().toLowerCase();
+        const is3D = lower.endsWith('.glb') || lower.endsWith('.gltf') || lower.includes('glb');
+        
+        return {
+            is3D: is3D,
+            emoji: is3D ? '📦' : (SETTINGS.EMOJI_MAP[ext] || '📄'),
+            label: is3D ? 'GLB' : ext.toUpperCase() || 'FILE'
+        };
+    }
+
+    /**
+     * モーダル制御
+     */
+    function openModal(id, el) {
+        state.currentId = id;
+        state.currentElement = el;
         document.getElementById('pass-modal').style.display = 'flex';
         const input = document.getElementById('pass-input');
         input.value = '';
@@ -70,81 +113,104 @@
     }
     function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
 
-    // 削除：ページ移動させないために「Imageリクエスト」を使用
+    /**
+     * 削除実行
+     */
     document.getElementById('confirm-del-btn').onclick = () => {
         const pass = document.getElementById('pass-input').value;
         if (!pass) return;
         closeModal();
+
+        // 画像リクエスト方式で通信（ページ移動回避）
         const img = new Image();
-        img.src = `${GAS_URL}?delId=${currentDeleteId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
-        alert("削除命令を送信しました。");
-        currentCardElement.remove();
+        img.src = `${SETTINGS.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
+        
+        // ユーザーへの通知
+        alert("削除しました。");
+        state.currentElement.remove();
     };
 
+    /**
+     * カードUI生成
+     */
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
-        const gallery = document.getElementById('gallery');
-        const info = getFileInfo(name);
-        const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-
+        const meta = getFileMeta(name);
+        const copyLink = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+        
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${esc(source)}</div>
                 <div class="icon-box">
-                    <span class="icon-emoji">${info.emoji}</span>
-                    <span class="ext-label">${esc(info.label)}</span>
+                    <span class="icon-emoji">${meta.emoji}</span>
+                    <span class="ext-label">${esc(meta.label)}</span>
                 </div>
             </div>
             <div class="card-body">
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
+                    <button class="btn" onclick="copyToClipboard('${esc(copyLink)}')">コピー</button>
                     ${isDrive ? `<button class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
-        gallery.appendChild(card);
+        document.getElementById('gallery').appendChild(card);
 
-        const iconBox = card.querySelector('.icon-box');
+        setupCardPreview(card, meta, isDrive, fileId, url);
+    }
+
+    // プレビュー表示の細かな制御
+    function setupCardPreview(card, meta, isDrive, fileId, url) {
         const previewArea = card.querySelector('.preview');
+        const iconBox = card.querySelector('.icon-box');
 
         if (isDrive) {
-            if (!info.isGlb) {
-                const iframe = document.createElement('iframe');
-                iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                iframe.onload = () => { iconBox.style.display = 'none'; };
-                previewArea.appendChild(iframe);
+            if (!meta.is3D) {
+                const ifr = document.createElement('iframe');
+                ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
+                ifr.onload = () => iconBox.style.display = 'none';
+                previewArea.appendChild(ifr);
             }
-            const delBtn = card.querySelector(`#del-${fileId}`);
-            delBtn.onclick = () => openModal(fileId, card);
+            card.querySelector(`#del-${fileId}`).onclick = () => openModal(fileId, card);
         } else {
-            const ext = name.split('.').pop().toLowerCase();
+            // GitHub: 画像か3Dか
+            const ext = meta.label.toLowerCase();
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
                 const img = document.createElement('img');
                 img.src = url;
-                img.onload = () => { iconBox.style.display = 'none'; };
+                img.onload = () => iconBox.style.display = 'none';
                 previewArea.appendChild(img);
-            } else if (info.isGlb) {
+            } else if (meta.is3D) {
                 const mv = document.createElement('model-viewer');
                 mv.src = url; mv.setAttribute('auto-rotate', ''); mv.setAttribute('camera-controls', '');
-                mv.onload = () => { iconBox.style.display = 'none'; };
+                mv.onload = () => iconBox.style.display = 'none';
                 previewArea.appendChild(mv);
             }
         }
     }
 
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => alert('コピー完了'));
+    };
+
+    /**
+     * データ読み込み開始
+     */
     async function init() {
-        // GitHub
-        fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
+        // GitHub取得
+        fetch(`https://api.github.com/repos/${SETTINGS.GITHUB.USER}/${SETTINGS.GITHUB.REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-        // Drive 一覧取得
-        fetch(`${GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
-            if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-        }).catch(e => console.error("表示エラー:", e));
+        
+        // Drive取得
+        fetch(`${SETTINGS.GAS_URL}?getFiles=true`)
+            .then(r => r.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
+            });
     }
+
     init();
 </script>
 </body>
