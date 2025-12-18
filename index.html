@@ -7,159 +7,137 @@
     <link rel="icon" href="https://raw.githubusercontent.com/nplus-hub/my-assets/main/glasses-purple-yellow-diamond.png">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
-    
+
     <style>
-        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --danger: #cf222e; --border: #e1e4e8; --success: #2da44e; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        /* --- デザイン設定 --- */
+        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --success: #2da44e; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
         
-        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        header { background: var(--primary); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 20px; font-weight: 700; text-decoration: none; color: white; }
         
-        /* ロゴをリンクとしてクリック可能に */
-        .logo { font-size: 20px; font-weight: 700; text-decoration: none; color: white; cursor: pointer; }
-        .logo:hover { opacity: 0.8; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: auto; }
         
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
-        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid var(--border); height: 400px; }
-        .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
+        .card { background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; height: 400px; position: relative; }
         
-        model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 5; background: #eaedef; }
+        /* プレビューエリア */
+        .preview { width: 100%; height: 240px; background: #eee; position: relative; display: flex; align-items: center; justify-content: center; }
+        .preview > * { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5; object-fit: contain; border: none; background: #eee; }
         
-        .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
-        .fallback-emoji { font-size: 40px; display: block; margin-bottom: 5px; }
-        .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        /* テキストプレビュー用 */
+        .text-preview { padding: 10px; font-size: 10px; font-family: monospace; white-space: pre-wrap; overflow: hidden; background: #fff !important; }
+
+        /* 背面アイコン */
+        .fallback-box { z-index: 1 !important; text-align: center; }
+        .fallback-emoji { font-size: 40px; display: block; }
+        .fallback-ext { font-size: 10px; color: #888; font-weight: bold; text-transform: uppercase; }
 
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: bold; word-break: break-all; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin-left: 10px; }
-        .btn-upload { background: var(--success); border: none; }
-        #pass-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
-        .modal-content { background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 280px; }
+        .file-name { font-size: 13px; font-weight: bold; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        
+        .badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 10px; color: white; font-size: 10px; z-index: 20; }
+        .btn { padding: 8px; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid #ddd; background: #f6f8fa; flex: 1; }
+        .btn-header { color: white; background: none; border: 1px solid white; margin-left: 8px; }
     </style>
 </head>
 <body>
 
-<div id="pass-modal">
-    <div class="modal-content">
-        <h3>削除確認</h3>
-        <input type="tel" id="pass-input" placeholder="****" maxlength="4" style="width:100%; font-size:24px; text-align:center; margin:15px 0;">
-        <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="closeModal()">戻る</button>
-            <button class="btn" style="color:var(--danger)" onclick="performDelete()">削除</button>
-        </div>
-    </div>
-</div>
-
 <header>
     <a href="https://nplus-hub.github.io/my-assets/" class="logo">Asset Manager Pro</a>
-    <div style="display:flex;">
-        <input type="file" id="file-input" style="display:none" onchange="handleUpload(this)">
-        <button onclick="document.getElementById('file-input').click()" class="btn btn-header btn-upload">Driveへ保存</button>
-        <button onclick="window.open('https://github.com/nplus-hub/my-assets/upload/main', '_blank')" class="btn btn-header">GitHubへ追加</button>
-        <button onclick="location.reload()" class="btn btn-header">Reload</button>
+    <div>
+        <input type="file" id="drive-in" style="display:none" onchange="handleUpload(this, 'upload')">
+        <input type="file" id="github-in" style="display:none" onchange="handleUpload(this, 'github_upload')">
+        <button class="btn btn-header" style="background:var(--success); border:none;" onclick="document.getElementById('drive-in').click()">Drive保存</button>
+        <button class="btn btn-header" style="background:#333; border:none;" onclick="document.getElementById('github-in').click()">GitHub保存</button>
+        <button class="btn btn-header" onclick="location.reload()">Reload</button>
     </div>
 </header>
 
 <div id="gallery" class="container"></div>
 
 <script>
+    /* --- 1. 設定セクション --- */
     const CONFIG = {
         GITHUB: { USER: "nplus-hub", REPO: "my-assets" },
-        GAS_URL: "https://script.google.com/macros/s/AKfycbzJ5gP3s8IBqYzVWkGWjZQ5LnCWQiRtLgv4dEaAFzVafJyXWjNtYTSdlJlgSGMrywXxhg/exec"
+        GAS_URL: "https://script.google.com/macros/s/AKfycbyrEPwdf1Y5avpMVv_KjNUpgrxNZaJP3sBn7SmQt5jCyq3kjdU-p9pNFUyTTxfIUbKrig/exec" // ★ここを更新
     };
 
-    let state = { currentId: null };
-
-    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
-    function openModal(id) { state.currentId = id; document.getElementById('pass-modal').style.display = 'flex'; }
-
-    function performDelete() {
-        const pass = document.getElementById('pass-input').value;
-        const img = new Image();
-        img.src = `${CONFIG.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
-        alert("送信しました");
-        closeModal();
-        setTimeout(() => location.reload(), 1500);
-    }
-
-    async function handleUpload(input) {
+    /* --- 2. アップロード処理 --- */
+    async function handleUpload(input, type) {
         const file = input.files[0]; if (!file) return;
-        const btn = document.querySelector('.btn-upload');
-        btn.innerText = "保存中..."; btn.disabled = true;
         const reader = new FileReader();
         reader.onload = async (e) => {
             const base64Data = e.target.result.split(',')[1];
-            try {
-                const res = await fetch(CONFIG.GAS_URL, {
-                    method: "POST",
-                    body: JSON.stringify({ type: "upload", filename: file.name, contentType: file.type, data: base64Data })
-                });
-                const result = await res.json();
-                if (result.status === "success") { alert("完了"); location.reload(); }
-                else { alert("エラー: " + result.message); }
-            } catch (err) { alert("失敗"); }
-            btn.innerText = "Driveへ保存"; btn.disabled = false;
+            const res = await fetch(CONFIG.GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ type: type, filename: file.name, contentType: file.type, data: base64Data })
+            });
+            const result = await res.json();
+            alert(result.status === "success" ? "保存成功" : "失敗: " + result.message);
+            location.reload();
         };
         reader.readAsDataURL(file);
     }
 
-    function createCard(name, url, source, color, isDrive = false, fileId = '') {
+    /* --- 3. カード生成ロジック --- */
+    async function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
-        let displayUrl = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+        const displayUrl = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
         
         let emoji = '📄';
         if (lower.endsWith('.glb')) emoji = '📦';
-        else if (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e))) emoji = '🖼️';
+        else if (['png','jpg','jpeg','webp','gif'].some(e => lower.endsWith(e))) emoji = '🖼️';
+        else if (lower.endsWith('.txt')) emoji = '📝';
 
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${source}</div>
-                <div class="fallback-box">
-                    <span class="fallback-emoji">${emoji}</span>
-                    <span class="fallback-ext">${ext}</span>
-                </div>
+                <div class="fallback-box"><span class="fallback-emoji">${emoji}</span><span class="fallback-ext">${ext}</span></div>
             </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
-                <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://drive.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" style="color:var(--danger)" onclick="openModal('${fileId}')">削除</button>` : ''}
-                </div>
+                <button class="btn" onclick="navigator.clipboard.writeText('${displayUrl}').then(()=>alert('Copy!'))">URLコピー</button>
             </div>`;
         document.getElementById('gallery').appendChild(card);
-
         const previewArea = card.querySelector('.preview');
+
+        // タイプ別プレビュー生成
         if (lower.endsWith('.glb')) {
             const mv = document.createElement('model-viewer');
-            mv.src = displayUrl;
-            mv.setAttribute('auto-rotate', '');
-            mv.setAttribute('camera-controls', '');
-            mv.setAttribute('crossorigin', 'anonymous');
-            mv.onerror = () => mv.remove();
+            mv.src = displayUrl; mv.setAttribute('auto-rotate', ''); mv.setAttribute('camera-controls', '');
+            mv.setAttribute('crossorigin', 'anonymous'); mv.onerror = () => mv.remove();
             previewArea.appendChild(mv);
+        } else if (lower.endsWith('.txt')) {
+            const txtBox = document.createElement('div');
+            txtBox.className = 'text-preview';
+            try {
+                const r = await fetch(displayUrl);
+                txtBox.innerText = await r.text();
+            } catch(e) { txtBox.innerText = "読み込み不可"; }
+            previewArea.appendChild(txtBox);
+        } else if (['png','jpg','jpeg','webp','gif'].some(e => lower.endsWith(e))) {
+            const img = document.createElement('img');
+            img.src = displayUrl; img.onerror = () => img.remove();
+            previewArea.appendChild(img);
         } else if (isDrive) {
             const ifr = document.createElement('iframe');
             ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
             previewArea.appendChild(ifr);
-        } else if (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e))) {
-            const img = document.createElement('img');
-            img.src = displayUrl;
-            img.onerror = () => img.remove();
-            previewArea.appendChild(img);
         }
     }
 
-    (function init() {
+    /* --- 4. 初期化 --- */
+    (async function init() {
+        // GitHub取得
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith("http")) {
+        // Drive取得
+        if (CONFIG.GAS_URL.startsWith("http")) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id));
             });
