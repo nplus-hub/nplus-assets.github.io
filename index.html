@@ -2,68 +2,101 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Secure Version</title>
+    <title>Asset Manager Pro - Secure v3</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
+        
+        /* プレビューエリア */
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* アイコン表示を強制 */
         .icon-box { text-align: center; z-index: 5; position: relative; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
         .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
+
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: white; z-index: 10; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
-        .btn-del:hover { background: #ffeef0; }
+
+        /* 数字専用入力モーダル */
+        #pass-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content input { width: 120px; font-size: 24px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 6px; -moz-appearance: textfield; }
+        .modal-content input::-webkit-inner-spin-button, .modal-content input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
     </style>
 </head>
 <body>
+    <div id="pass-modal">
+        <div class="modal-content">
+            <h3>削除の確認</h3>
+            <p>数字4桁のパスコードを入力してください</p>
+            <input type="number" id="pass-input" pattern="\d*" inputmode="numeric" placeholder="****">
+            <div class="modal-btns">
+                <button class="btn" onclick="closeModal()">キャンセル</button>
+                <button class="btn btn-del" id="confirm-del-btn">削除実行</button>
+            </div>
+        </div>
+    </div>
+
     <div id="gallery" class="container"></div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLj80z5MD-m6WcF5Q1Uxq0ULnxTEhMIxryuFOyd0OkFJpL1OibFj5XBBxuUKbDXIPbkFM6cKNwCIq8zBBhQ5erp5HPuc78Zqqb0YxEndK8jK3aBBHx5iDiAylHq-qWU4zUEIOMLT_Iz_ZLbeq2dwwd1ip_cvmpCrt6lSpRZLU9TSO3vD9UCIWaDwtjwdSQ_f2d4m4uBXrQI99wcB1VmTvJTyEcczLpMr-qObNFSvYZimsqIA5OaIOZMC482SGxwYwNeii-vd_vj2s6XV516D5m9ofrhJmA&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新しくデプロイしたURLを貼ってください
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgKVTkrMr7F_fCQtfcdggEDixjNn6fTNBejYSnFmTL_ucFoZ0HaAt9sVUnmOquIlnv8j1kpipTpBKa2nt53wM_aV9I0NOgPEn0jmm0iLcFRYxhYVhCXsi_GqLSuv5zQ6DGLqnmpiwiyBvLWkbo-C424Mw5XMLq8UinEQibr1xnVhMxTcY-HBGpWJWnebdxrMMKZz8cu91HERfuZFELvOAxKmrz_L-8523DeHNfzDOJvJXctcYVJWjE3PVoUiCKvxG5OOkUQqMd498xnh3vgjldLWG_oZCw0KJ35a-3D&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新URLを貼ってください
+
+    let currentDeleteId = null;
+    let currentCardElement = null;
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
     function getEmoji(ext) {
-        const map = {'pdf':'📄','txt':'📝','md':'📝','glb':'📦','gltf':'📦','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️','js':'📜','css':'🎨'};
+        const map = {'pdf':'📄','txt':'📝','md':'📝','glb':'📦','gltf':'📦','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
         return map[ext] || '📄';
     }
 
-    async function deleteFile(fileId, cardElement) {
-        // 英数字入力に対応したプロンプト
-        const pass = prompt("削除するには英数字のパスコードを入力してください：");
-        if (pass === null) return; // キャンセル時
+    // モーダル操作
+    function openModal(fileId, cardElement) {
+        currentDeleteId = fileId;
+        currentCardElement = cardElement;
+        document.getElementById('pass-modal').style.display = 'flex';
+        document.getElementById('pass-input').value = '';
+        document.getElementById('pass-input').focus();
+    }
+    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
 
+    // 削除実行
+    document.getElementById('confirm-del-btn').onclick = async () => {
+        const pass = document.getElementById('pass-input').value;
+        if (!pass) return;
+        closeModal();
         try {
-            const response = await fetch(`${GAS_URL}?delId=${fileId}&pass=${encodeURIComponent(pass)}`);
+            const response = await fetch(`${GAS_URL}?delId=${currentDeleteId}&pass=${encodeURIComponent(pass)}`, { redirect: 'follow' });
             const result = await response.json();
-            
             if (result.status === "success") {
                 alert("ゴミ箱へ移動しました。");
-                cardElement.remove();
-            } else {
-                alert("エラー: " + result.message);
-            }
-        } catch (e) {
-            alert("通信エラーが発生しました。GASのデプロイURLが最新か、設定が『全員』になっているか確認してください。");
-        }
-    }
+                currentCardElement.remove();
+            } else { alert("エラー: " + result.message); }
+        } catch (e) { alert("通信エラーが発生しました。"); }
+    };
 
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
         const extMatch = name.match(/\.([a-z0-9]+)$/i);
         const ext = extMatch ? extMatch[1].toLowerCase() : "";
-        const emoji = getEmoji(ext);
         
-        // コピー用URL: GLBも含め、常に直リンク形式を生成
+        // 【修正】名前そのものに "glb" が含まれる場合もアイコン表示対象にする
+        const isGlbFile = ext === 'glb' || ext === 'gltf' || name.toLowerCase().includes('glb');
+        
+        const emoji = getEmoji(ext);
         const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
 
         const card = document.createElement('div');
@@ -73,14 +106,14 @@
                 <div class="badge" style="background:${color}">${esc(source)}</div>
                 <div class="icon-box">
                     <span class="icon-emoji">${emoji}</span>
-                    <span class="ext-label">${esc(ext)}</span>
+                    <span class="ext-label">${esc(ext || 'FILE')}</span>
                 </div>
             </div>
             <div class="card-body">
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" id="btn-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
@@ -90,15 +123,15 @@
         const iconBox = card.querySelector('.icon-box');
 
         if (isDrive) {
-            // GLB/GLTFの場合はアイコンのまま。それ以外（画像等）はiframeでプレビュー。
-            if (!['glb', 'gltf'].includes(ext)) {
+            // 名前や拡張子に glb が含まれない場合のみ iframe を表示
+            if (!isGlbFile) {
                 const iframe = document.createElement('iframe');
                 iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 iframe.onload = () => { iconBox.style.display = 'none'; };
                 previewArea.appendChild(iframe);
             }
-            const delBtn = card.querySelector(`#del-${fileId}`);
-            if (delBtn) delBtn.onclick = () => deleteFile(fileId, card);
+            const delBtn = card.querySelector(`#btn-${fileId}`);
+            if (delBtn) delBtn.onclick = () => openModal(fileId, card);
         } else {
             // GitHub用
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
@@ -107,7 +140,6 @@
                 img.onload = () => { iconBox.style.display = 'none'; };
                 previewArea.appendChild(img);
             } else if (['glb','gltf'].includes(ext)) {
-                // GitHubのGLBはmodel-viewerで表示
                 const mv = document.createElement('model-viewer');
                 mv.src = url;
                 mv.setAttribute('auto-rotate', '');
@@ -120,12 +152,10 @@
     }
 
     async function init() {
-        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-        // Drive
         fetch(GAS_URL).then(r => r.json()).then(data => {
             if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
         });
