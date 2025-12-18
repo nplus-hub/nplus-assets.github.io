@@ -5,306 +5,142 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😎</text></svg>">
-    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
-    
     <style>
-        :root {
-            --primary: #24292f;
-            --accent: #0969da;
-            --danger: #cf222e;
-            --bg: #f6f8fa;
-            --border: #d0d7de;
-        }
+        :root { --primary: #24292f; --accent: #0969da; --danger: #cf222e; --bg: #f6f8fa; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #1f2328; }
+        
+        /* 以前の黒ヘッダー */
+        header { background-color: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 32px; display: none; }
+        
+        /* アップロードエリア（追加分） */
+        .upload-panel { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #d0d7de; margin-bottom: 24px; display: flex; align-items: center; gap: 15px; }
+        
+        /* グリッドとカードの維持 */
+        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+        .asset-card { background: white; border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden; transition: 0.2s; position: relative; }
+        .asset-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(140,149,159,0.2); }
+        .preview-box { width: 100%; height: 240px; background: #eee; border-bottom: 1px solid #d0d7de; }
+        model-viewer { width: 100%; height: 100%; }
+        .asset-info { padding: 16px; }
+        .asset-name { font-weight: 600; font-size: 14px; margin-bottom: 12px; word-break: break-all; }
+        
+        .btn { padding: 8px 16px; border: 1px solid #d0d7de; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #fff; transition: 0.2s; width: 100%; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-danger { color: var(--danger); border-color: var(--danger); }
+        .btn-danger:hover { background: #ffebe9; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg);
-            color: #1f2328;
-        }
-
-        /* ヘッダーデザインの維持 */
-        header {
-            background-color: var(--primary);
-            color: white;
-            padding: 16px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 32px;
-            display: none; /* ログインまで非表示 */
-        }
-
-        /* アップロードセクション */
-        .upload-section {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 32px;
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-
-        /* グリッドとカードデザインの維持 */
-        .asset-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-        }
-
-        .asset-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .asset-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(140,149,159,0.2);
-        }
-
-        .preview-container {
-            width: 100%;
-            height: 240px;
-            background-color: #eee;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .asset-info {
-            padding: 16px;
-        }
-
-        .asset-name {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 12px;
-            word-break: break-all;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 8px 16px;
-            font-size: 12px;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            background: white;
-            transition: 0.2s;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            border: none;
-        }
-
-        .btn-primary:hover { opacity: 0.9; }
-
-        .btn-danger {
-            color: var(--danger);
-        }
-
-        .btn-danger:hover {
-            background-color: #ffebe9;
-            border-color: var(--danger);
-        }
-
-        /* ログイン画面 */
-        .login-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--primary);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .login-box {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            text-align: center;
-            width: 320px;
-        }
-
-        input[type="password"], input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            margin: 16px 0;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
+        /* 以前のログイン画面 */
+        .login-screen { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
-<div id="login-screen" class="login-overlay">
+<div id="login-overlay" class="login-screen">
     <div class="login-box">
-        <h2 style="margin:0 0 20px 0;">😎 Authenticate</h2>
-        <input type="password" id="pass-input" placeholder="Enter Passcode">
-        <button onclick="attemptLogin()" class="btn btn-primary" style="width:100%; padding:12px;">Login</button>
+        <h2 style="margin-top:0">😎 Authenticate</h2>
+        <input type="password" id="pass-field" placeholder="Passcode" style="padding:10px; width:200px; border:1px solid #ddd; border-radius:6px;">
+        <button onclick="login()" class="btn btn-primary" style="margin-top:15px; width:100%; padding:12px;">Login</button>
     </div>
 </div>
 
 <header>
     <div style="font-size: 20px; font-weight: 700;">😎 Asset Manager Pro</div>
-    <button onclick="location.reload()" class="btn" style="width:auto;">Reload</button>
+    <button onclick="location.reload()" class="btn" style="width:auto; color:black;">Reload</button>
 </header>
 
-<div class="container" id="app-content">
-    <div class="upload-section">
-        <div style="flex-grow:1">
-            <label style="font-size:12px; font-weight:bold;">GitHubへ直接アップロード:</label>
-            <input type="file" id="gh-upload-file" style="margin: 8px 0 0 0;">
+<div class="container" id="content">
+    <div class="upload-panel">
+        <div style="flex:1">
+            <span style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">GitHubへ新規追加:</span>
+            <input type="file" id="gh-input">
         </div>
-        <button onclick="handleGithubUpload()" id="up-btn" class="btn btn-primary" style="height:40px; margin-top:18px; padding:0 24px;">アップロード実行</button>
+        <button class="btn btn-primary" id="up-exec" onclick="upload()" style="width:auto; height:40px; padding:0 25px;">アップロード実行</button>
     </div>
 
-    <h3 style="margin: 0 0 16px 0; border-bottom: 2px solid var(--primary); padding-bottom: 8px;">Asset List</h3>
-    <div class="asset-grid" id="main-grid"></div>
+    <h3 style="margin-bottom:20px; border-bottom: 2px solid var(--primary); padding-bottom:10px;">Assets</h3>
+    <div class="asset-grid" id="grid"></div>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwTJOiXCz6az0e-CV4_oJvtNu9Tt4-QpUbHsc2jyWQvQaDovYkno6qpkFoD-lwmp1hvcQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwNv8fBQDRdtwHmm2p6J4V5Ln35wW09FFgwZLdwOuMQO6CJg3y4D8VVJ3o9DneipHT4mQ/exec";
     const GH_USER = "nplus-hub";
     const GH_REPO = "my-assets";
-    const GH_RAW_BASE = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
+    const GH_BASE = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
-    // ログイン処理
-    async function attemptLogin() {
-        const pass = document.getElementById('pass-input').value;
+    async function login() {
+        const pass = document.getElementById('pass-field').value;
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "auth", pass: pass }) });
         const result = await res.json();
-        
         if (result.success) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
-            refreshGallery();
-        } else {
-            alert("Passcode incorrect.");
-        }
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            init();
+        } else { alert("Passcode incorrect."); }
     }
 
-    // 全表示のリフレッシュ（GitHub + Drive）
-    async function refreshGallery() {
-        const grid = document.getElementById('main-grid');
-        grid.innerHTML = "<p>Loading assets...</p>";
-
+    async function init() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = "<p>Loading...</p>";
+        
         try {
-            // 1. GitHubファイルの取得
-            const ghRes = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/`);
-            const ghFiles = await ghRes.json();
-            
-            // 2. Driveファイルの取得（GAS経由）
-            const drRes = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) });
-            const drFiles = await drRes.json();
+            // GitHubとDrive両方のリストを取得
+            const ghPromise = fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/`).then(r => r.json());
+            const drPromise = fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) }).then(r => r.json());
+            const [ghFiles, drFiles] = await Promise.all([ghPromise, drPromise]);
 
             grid.innerHTML = "";
-
-            // GitHub資産のカード生成
-            ghFiles.filter(f => f.name.endsWith('.glb')).forEach(file => {
-                const url = GH_RAW_BASE + file.name;
-                createCard(grid, file.name, url, true);
-            });
-
-            // Drive資産のカード生成
-            drFiles.forEach(file => {
-                createCard(grid, file.name, file.id, false);
-            });
-
-        } catch (e) {
-            grid.innerHTML = "<p>Error loading data.</p>";
-        }
+            // GitHubカード
+            ghFiles.filter(f => f.name.endsWith('.glb')).forEach(f => renderCard(f.name, GH_BASE + f.name, true));
+            // Driveカード
+            drFiles.forEach(f => renderCard(f.name, f.id, false));
+        } catch(e) { grid.innerHTML = "<p>Failed to load.</p>"; }
     }
 
-    function createCard(container, name, pathOrId, isGithub) {
+    function renderCard(name, path, isGH) {
+        const grid = document.getElementById('grid');
         const card = document.createElement('div');
         card.className = 'asset-card';
-        
-        // プレビュー表示（GitHubは表示、Driveはプレビュー不可）
-        const previewHtml = isGithub 
-            ? `<model-viewer src="${pathOrId}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`
-            : `<div style="text-align:center; color:#888; font-size:12px;">Drive Asset<br>(Preview Unavailable)</div>`;
-
         card.innerHTML = `
-            <div class="preview-container">${previewHtml}</div>
+            <div class="preview-box">
+                ${isGH ? `<model-viewer src="${path}" auto-rotate camera-controls></model-viewer>` : `<div style="display:flex;align-items:center;height:100%;justify-content:center;color:#888;font-size:12px;">Google Drive Asset<br>(Preview Unavailable)</div>`}
+            </div>
             <div class="asset-info">
                 <div class="asset-name">${name}</div>
-                <div class="button-group">
-                    ${isGithub 
-                        ? `<button class="btn" onclick="copyToClipboard('${pathOrId}')">URLコピー</button>` 
-                        : `<button class="btn btn-danger" onclick="handleDelete('${pathOrId}')">Driveから削除</button>`
-                    }
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
+                ${isGH ? `<button class="btn" onclick="copy('${path}')">URLコピー</button>` : `<button class="btn btn-danger" onclick="del('${path}')">Driveから削除</button>`}
+            </div>`;
+        grid.appendChild(card);
     }
 
-    async function handleGithubUpload() {
-        const fileInput = document.getElementById('gh-upload-file');
-        if (fileInput.files.length === 0) return alert("ファイルを選んでください");
-        
-        const file = fileInput.files[0];
-        const btn = document.getElementById('up-btn');
-        btn.innerText = "処理中..."; btn.disabled = true;
+    async function upload() {
+        const file = document.getElementById('gh-input').files[0];
+        if (!file) return alert("ファイルを選択してください");
+        const btn = document.getElementById('up-exec');
+        btn.innerText = "通信中..."; btn.disabled = true;
 
         const reader = new FileReader();
         reader.onload = async () => {
             const base64 = reader.result.split(',')[1];
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ type: "github_upload", filename: file.name, base64: base64 }) 
-            });
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "github_upload", filename: file.name, base64: base64 }) });
             const result = await res.json();
-            if (result.content) {
-                alert("GitHubへのアップロードが完了しました");
-                refreshGallery();
-            } else {
-                alert("エラー: " + (result.message || "不明なエラー"));
-            }
+            if (result.content) { alert("GitHubへ保存しました"); init(); }
+            else { alert("失敗: " + result.message); }
             btn.innerText = "アップロード実行"; btn.disabled = false;
         };
         reader.readAsDataURL(file);
     }
 
-    async function handleDelete(id) {
-        if (!confirm("Google Driveからこのファイルを削除しますか？")) return;
+    async function del(id) {
+        if (!confirm("Google Driveから削除しますか？")) return;
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "delete", id: id }) });
         const result = await res.json();
-        if (result.status === "success") {
-            alert("削除しました");
-            refreshGallery();
-        }
+        if (result.status === "success") { alert("削除しました"); init(); }
     }
 
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => alert("URLをコピーしました"));
-    }
+    function copy(t) { navigator.clipboard.writeText(t).then(() => alert("URLをコピーしました")); }
 </script>
-
 </body>
 </html>
