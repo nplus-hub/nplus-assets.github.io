@@ -10,7 +10,10 @@
          * 【設定エリア】
          ************************************************************/
         const CONFIG = {
+            // 1. GASのデプロイURLを入力してください
             GAS_URL: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgllBINmFLZc_vie4W3LBfz6o1LJFzkABCVGejD_uLSa9gc2M_224qRLLtqfIbakYQmHuqxGlZMJXkZ2HkIGawILdu_axB4_YShSadewNAHMt3SQaKj-iSBHTKPCTZqqMhr1AMWpuk4IieVenJYeHhyZ6qNl5o3ByadyIRxD_LLhCia6pjn4U8u-Ba_JtGugbaiNYwF0Y6DM7ZIOIRqC9UYxSDdmSOe6-_q2YTCqdPzEK6gQmKean8oeyMsAvTRcoY1OasQs1Rp2Smae7d2ajZibSvA5U05747GvqEP&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw", 
+            
+            // 2. GitHubの情報
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -37,12 +40,13 @@
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin-left: 10px; }
-        .btn-del { color: var(--danger); border-color: var(--danger); }
+        /* 削除ボタン専用：赤色に強調 */
+        .btn-del { color: var(--danger); border-color: var(--danger); background: #fff5f5; }
 
-        /* 削除用モーダル */
+        /* モーダル */
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
         .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
-        .modal-box input { width: 100%; font-size: 24px; text-align: center; padding: 8px; margin: 15px 0; border: 1px solid #ddd; box-sizing: border-box; }
+        .modal-box input { width: 100%; font-size: 24px; text-align: center; padding: 8px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -61,60 +65,63 @@
 
 <div id="modal">
     <div class="modal-box">
-        <h3 style="margin:0">削除確認</h3>
+        <h3 style="margin:0">削除の確認</h3>
         <p style="font-size:12px; color:#666">パスコードを入力してください</p>
         <input type="password" id="pass-input" placeholder="****">
         <div style="display:flex; gap:10px;">
             <button class="btn" onclick="closeModal()">キャンセル</button>
-            <button class="btn btn-del" onclick="confirmDelete()">削除する</button>
+            <button class="btn btn-del" onclick="confirmDelete()">削除を実行</button>
         </div>
     </div>
 </div>
 
 <script>
-    let currentDeleteId = null;
-    let currentDeleteCard = null;
+    let deleteId = null;
+    let deleteEl = null;
 
+    // アップロード
     async function uploadFile(input) {
         const file = input.files[0]; if (!file) return;
-        alert("アップロードを開始します...");
+        alert("保存中...");
         const reader = new FileReader();
         reader.onload = async (e) => {
             const base64Data = e.target.result.split(',')[1];
             try {
                 const res = await fetch(CONFIG.GAS_URL, { method: "POST", body: JSON.stringify({ type: 'upload', filename: file.name, contentType: file.type, data: base64Data }) });
-                const result = await res.json();
-                if (result.status === "success") { alert("完了"); location.reload(); }
-            } catch (err) { alert("通信失敗"); }
+                alert("完了"); location.reload();
+            } catch (err) { alert("失敗"); }
         };
         reader.readAsDataURL(file);
     }
 
-    function openDeleteModal(id, el) {
-        currentDeleteId = id;
-        currentDeleteCard = el;
+    // 削除開始
+    function openDel(id, el) {
+        deleteId = id;
+        deleteEl = el;
         document.getElementById('modal').style.display = 'flex';
+        document.getElementById('pass-input').focus();
     }
-
     function closeModal() {
         document.getElementById('modal').style.display = 'none';
         document.getElementById('pass-input').value = '';
     }
 
+    // 削除実行
     async function confirmDelete() {
         const pass = document.getElementById('pass-input').value;
         if(!pass) return;
-        const res = await fetch(`${CONFIG.GAS_URL}?delId=${currentDeleteId}&pass=${pass}`);
-        const text = await res.text();
-        if(text === "success") {
+        const res = await fetch(`${CONFIG.GAS_URL}?delId=${deleteId}&pass=${pass}`);
+        const result = await res.text();
+        if(result === "success") {
             alert("削除しました。");
-            currentDeleteCard.remove();
+            deleteEl.remove();
             closeModal();
         } else {
-            alert("パスコードが違います");
+            alert("パスコードが間違っています。");
         }
     }
 
+    // カード生成 (修正：Driveファイルに必ず削除ボタンを追加)
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
@@ -129,10 +136,10 @@
                 <div class="fallback-box"><span class="fallback-emoji">${emoji}</span><span class="fallback-ext">${ext}</span></div>
             </div>
             <div class="card-body">
-                <div class="file-name">${name}</div>
+                <div class="file-name" title="${name}">${name}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://drive.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" onclick="openDeleteModal('${fileId}', this.closest('.card'))">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" onclick="openDel('${fileId}', this.closest('.card'))">削除</button>` : ''}
                 </div>
             </div>`;
         document.getElementById('gallery').appendChild(card);
@@ -150,11 +157,14 @@
         }
     }
 
+    // 初期起動
     (function init() {
+        // GitHub
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`).then(r => r.json()).then(data => {
             if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
         });
-        if (CONFIG.GAS_URL.startsWith("http")) {
+        // Drive
+        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith("http")) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id));
             });
