@@ -9,25 +9,32 @@
     <style>
         :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --danger: #cf222e; --border: #e1e4e8; --success: #2da44e; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
-        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+        
+        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 20px; font-weight: 700; }
+        
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
-        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid var(--border); height: 400px; transition: transform 0.2s, box-shadow 0.2s; }
+        
+        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid var(--border); height: 400px; transition: 0.2s; }
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+        
         .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
         model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; z-index: 1; }
-        .loading-text { font-size: 12px; color: #888; z-index: 0; }
+        .loading-text { font-size: 11px; color: #999; z-index: 0; }
+        
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #24292f; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; transition: 0.1s; }
         .btn:hover { background: #f3f4f6; }
         .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin-left: 10px; }
         .btn-upload { background: var(--success); border: none; }
-        .btn-upload:hover { background: #2c974b; }
         .btn-del { color: var(--danger); border-color: var(--danger); }
-        .btn-del:hover { background: #ffebe9; }
+
+        /* 削除確認モーダル */
         #pass-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .modal-content input { width: 100%; font-size: 24px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
@@ -38,10 +45,10 @@
 <div id="pass-modal">
     <div class="modal-content">
         <h3 style="margin:0">削除の確認</h3>
-        <p style="font-size:12px; color:#666">パスコードを入力してください</p>
+        <p style="font-size:11px; color:#666">パスコードを入力（Enterで確定）</p>
         <input type="tel" id="pass-input" placeholder="****" maxlength="4">
         <div style="display:flex; gap:10px">
-            <button class="btn" onclick="closeModal()">キャンセル</button>
+            <button class="btn" onclick="closeModal()">戻る</button>
             <button class="btn btn-del" onclick="performDelete()">削除実行</button>
         </div>
     </div>
@@ -65,12 +72,12 @@
      */
     const CONFIG = {
         GITHUB: { USER: "nplus-hub", REPO: "my-assets" },
-        GAS_URL: "https://script.google.com/macros/s/AKfycbyaBrbOzE_QCsd6atwJyKeUhAGnIkhAkalKMWQNzMXfM5SnhnrPcyfrAL8u21FcpYmJ0Q/exec" 
+        GAS_URL: "https://script.google.com/macros/s/AKfycbwj3FMvL4xcSTzKUsYWKrrnWO1ZCzrE_veNxORuq55hQeiJHtPHq8s2oKsJrasjPyqGxw/exec" // ★ここを書き換えてください
     };
 
     let state = { currentId: null };
 
-    // --- ファイル保存機能 (Google Drive) ---
+    // --- ファイル保存機能 (Drive) ---
     async function handleUpload(input) {
         const file = input.files[0];
         if (!file) return;
@@ -95,14 +102,10 @@
                 });
                 const result = await res.json();
                 if (result.status === "success") {
-                    alert("Google Driveに保存しました。");
+                    alert("Google Driveに保存完了しました。");
                     location.reload();
-                } else {
-                    alert("エラーが発生しました: " + result.message);
-                }
-            } catch (err) {
-                alert("通信エラーにより保存に失敗しました。");
-            }
+                } else { alert("エラー: " + result.message); }
+            } catch (err) { alert("ネットワークエラーが発生しました。"); }
             btn.innerText = originalText;
             btn.disabled = false;
         };
@@ -121,7 +124,6 @@
     function performDelete() {
         const pass = document.getElementById('pass-input').value;
         if(!pass) return;
-        // GETリクエストで削除実行
         const img = new Image();
         img.src = `${CONFIG.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
         alert("削除リクエストを送信しました。");
@@ -140,12 +142,12 @@
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${source}</div>
-                <div class="loading-text">Loading...</div>
+                <div class="loading-text">Loading Asset...</div>
             </div>
             <div class="card-body">
                 <div class="file-name" title="${name}">${name}</div>
                 <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${displayUrl}').then(()=>alert('URLをコピーしました'))">URLコピー</button>
+                    <button class="btn" onclick="navigator.clipboard.writeText('${displayUrl}').then(()=>alert('URLコピー完了'))">URLコピー</button>
                     ${isDrive ? `<button class="btn btn-del" onclick="openModal('${fileId}')">削除</button>` : ''}
                 </div>
             </div>`;
@@ -167,16 +169,16 @@
         }
     }
 
-    // --- 初期化 ---
+    // --- 初期実行 ---
     (function init() {
-        // GitHub
+        // GitHub取得
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) {
                     data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
                 }
             });
-        // Drive (GAS URLが設定されている場合のみ)
+        // Drive取得
         if (CONFIG.GAS_URL.startsWith("http")) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
                 if(Array.isArray(data)) {
@@ -186,7 +188,6 @@
         }
     })();
 
-    // Enterキーで削除実行
     document.getElementById('pass-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performDelete();
     });
