@@ -28,7 +28,14 @@
     const GITHUB_REPO = "my-assets";
     const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg6lUNYUqDKS-la6alsT4YpBKyevS2tE06eNJoXZRnOQkelBknB60UdBeYtGEtPVj4l2kFQHZX98ee9zQVchhKya8t7YPSNylReH92jZnAjEuZbEkLPSIwSXAKNwUesELe8t4bLyO_AsBIMOuJKj1aNUcZuUkgLPX-Xo-57SF8GOWzBvHefnwpGPOmwsCCEvOn04e6st9icxR4-BRrLahxvFmkV6yQDBQrgjZYnEzJGYhDKdFSzrFEu0XIaLRha516n5_K_uflsRsp2Qk9p50jMsOsJ6sUeplTzYQzf&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
-    // 絵文字の出し分け
+    // 特殊文字を安全に処理する関数（'や"によるタグ崩れを防止）
+    const esc = (str) => {
+        if (!str) return "";
+        return str.replace(/[&'`"<>]/g, (match) => ({
+            '&': '&amp;', "'": '&#39;', '`': '&#96;', '"': '&quot;', '<': '&lt;', '>': '&gt;'
+        }[match]));
+    };
+
     function getEmoji(ext) {
         const map = {
             'pdf': '📄', 'txt': '📝', 'md': '📝', 'glb': '📦', 'gltf': '📦',
@@ -38,63 +45,77 @@
         return map[ext] || '📄';
     }
 
-    // カード作成（エラーに強い構造）
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
-        try {
-            const gallery = document.getElementById('gallery');
-            const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : "";
-            const emoji = getEmoji(ext);
-            const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+        const gallery = document.getElementById('gallery');
+        const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : "";
+        const emoji = getEmoji(ext);
+        const safeName = esc(name);
+        const displayUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
 
-            // 基本となるカードのHTMLを組み立て（テンプレート）
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="preview" id="pre-${fileId || name}">
-                    <div class="badge" style="background:${color}">${source}</div>
-                    <div class="icon-box"><span class="icon-emoji">${emoji}</span><span class="ext-label">${ext || 'FILE'}</span></div>
+        // 1. まずは「アイコン表示」のカードを即座に作成
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="preview">
+                <div class="badge" style="background:${color}">${source}</div>
+                <div class="icon-box">
+                    <span class="icon-emoji">${emoji}</span>
+                    <span class="ext-label">${esc(ext) || 'FILE'}</span>
                 </div>
-                <div class="card-body">
-                    <div class="file-name" title="${name}">${name}</div>
-                    <button class="btn" onclick="navigator.clipboard.writeText('${copyUrl}')">URLをコピー</button>
-                </div>
-            `;
-            gallery.appendChild(card);
+            </div>
+            <div class="card-body">
+                <div class="file-name">${safeName}</div>
+                <button class="btn" onclick="navigator.clipboard.writeText('${esc(displayUrl)}')">URLをコピー</button>
+            </div>
+        `;
+        gallery.appendChild(card);
 
-            // プレビュー領域への上書き（失敗してもカード自体は残る）
-            const previewArea = card.querySelector('.preview');
-            const iconHtml = previewArea.innerHTML; // 失敗時のバックアップ
+        // 2. プレビューが可能な場合のみ、非同期で中身を書き換える
+        const preview = card.querySelector('.preview');
 
-            if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
-                const img = new Image();
-                img.src = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-                img.onload = () => { previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div>`; previewArea.appendChild(img); };
-            } 
-            else if (['txt', 'md', 'js', 'json'].includes(ext)) {
-                const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
-                fetch(fetchUrl).then(r => r.text()).then(t => {
-                    previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><pre class="text-preview">${t.substring(0, 500)}</pre>`;
-                }).catch(() => {});
-            }
-            else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
-                const embedUrl = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
-                previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><iframe src="${embedUrl}"></iframe>`;
-            }
-            else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
-                previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
-            }
-        } catch (e) { console.error("Error creating card for:", name, e); }
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+            const img = new Image();
+            img.src = displayUrl;
+            img.onload = () => {
+                preview.innerHTML = `<div class="badge" style="background:${color}">${source}</div>`;
+                preview.appendChild(img);
+            };
+        } 
+        else if (['txt', 'md', 'js', 'json'].includes(ext)) {
+            const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+            fetch(fetchUrl).then(r => r.text()).then(t => {
+                preview.innerHTML = `<div class="badge" style="background:${color}">${source}</div><pre class="text-preview">${esc(t.substring(0, 500))}</pre>`;
+            }).catch(() => {});
+        }
+        else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
+            const embedUrl = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+            preview.innerHTML = `<div class="badge" style="background:${color}">${source}</div><iframe src="${embedUrl}"></iframe>`;
+        }
+        else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
+            preview.innerHTML = `<div class="badge" style="background:${color}">${source}</div><model-viewer src="${esc(url)}" auto-rotate camera-controls></model-viewer>`;
+        }
     }
 
-    // データ取得
     async function init() {
-        // GitHub
+        // GitHub取得
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(res => res.json())
-            .then(data => { if(Array.isArray(data)) data.forEach(f => { if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f'); }); })
-            .catch(e => console.error("GitHub Fetch Error"));
+            .then(data => {
+                if(Array.isArray(data)) data.forEach(f => {
+                    if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f');
+                });
+            }).catch(e => console.error("GitHub Error"));
 
-        // Google Drive
+        // Drive取得
         fetch(GAS_URL)
             .then(res => res.json())
-            .then(driveData => { if(Array.isArray(driveData))
+            .then(driveData => {
+                if(Array.isArray(driveData)) driveData.forEach(f => {
+                    if(!f.error) createCard(f.name, '', 'Drive', '#34a853', true, f.id);
+                });
+            }).catch(e => console.error("Drive Error"));
+    }
+    init();
+</script>
+</body>
+</html>
