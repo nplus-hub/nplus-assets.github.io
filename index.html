@@ -2,21 +2,26 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Secure Edition</title>
+    <title>Asset Manager Pro - Final Stable</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
+        
+        /* プレビューエリアの設定 */
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-        .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; }
-        .text-preview { font-size: 10px; padding: 12px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; }
-        .icon-box { text-align: center; z-index: 1; }
+        .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* アイコン表示を一番手前に持ってくる */
+        .icon-box { text-align: center; z-index: 5; position: relative; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
         .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
-        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+
+        .text-preview { font-size: 10px; padding: 12px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; z-index: 2; position: relative; }
+        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: white; z-index: 10; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
-        .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 10; }
+        .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
@@ -29,7 +34,7 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi3jjRv6KCAWdbXUlAALIil7GTDm5F7u80unENJJGqprkOfr1rtN5IwkkLzC3U401gWiFL5ns2Bmt74V2V2f4U72PwEwD0nRhQ2nc7mkNZn3C-4WxTUl3xK5lnR12DWcta4kYRJVmrSG2zJl6YEAa1aAMrCMIXsTL8NK4npNkmPnUPiCl5ZlUcbynvYDl3pDoYuY1Qxje3FhMRh-qS8D6NeSEuC8sKOcn1CPJQoUS5Pjv0tgsEHFh7h21I7M0fa_KbEcLwStfRQzOjeohZWHyi1LVFx6ye5FD0_1Wj8&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgl6OIYeqXjMhETC6oZpMbtpzD0J3NOc_UCDDpnWL9ZW_UjqE22rGAOtFM9PLomyiRQzV7h8QNkHfr1VIU9ZKfg2N7oVwTr3BN_jEqa_gPfljl-Yw5Z6T9TOAzHW1Sa0T5lVGjnqYJpIgMwtcr9-24TAHf51Q9SWo6xETIwLpVumeFtz2IVrCbRfmJi59TCXKgHU40fjjiLIECZDq4_sMvgied5F3dHpwyoUsKb05xj_Wjo19WKgnw9fD1-7bN8f9pRwc06-XLuF-hJyEtn_X0SZaLouBrZ7-RAISvb&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新しくデプロイしたURLを貼ってください
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
@@ -39,13 +44,16 @@
     }
 
     async function deleteFile(fileId, cardElement) {
-        // 暗証番号の入力を求める
         const pass = prompt("削除するには4桁の暗証番号を入力してください：");
-        if (!pass) return; // キャンセルされた場合
+        if (!pass) return;
 
         try {
-            // URLに pass パラメータを追加して送信
-            const response = await fetch(`${GAS_URL}?delId=${fileId}&pass=${pass}`);
+            // 通信エラー（CORS）を回避するために redirect: 'follow' を明示
+            const response = await fetch(`${GAS_URL}?delId=${fileId}&pass=${pass}`, {
+                method: 'GET',
+                mode: 'cors',
+                redirect: 'follow'
+            });
             const result = await response.json();
             
             if (result.status === "success") {
@@ -55,7 +63,8 @@
                 alert("エラー: " + result.message);
             }
         } catch (e) {
-            alert("通信エラーが発生しました。");
+            console.error(e);
+            alert("通信エラーが発生しました。GASのデプロイ設定が「全員」になっているか再度ご確認ください。");
         }
     }
 
@@ -71,7 +80,7 @@
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${esc(source)}</div>
-                <div class="icon-box">
+                <div class="icon-box" id="icon-${isDrive ? fileId : name}">
                     <span class="icon-emoji">${emoji}</span>
                     <span class="ext-label">${esc(ext)}</span>
                 </div>
@@ -80,43 +89,57 @@
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="btn-${fileId}">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
         gallery.appendChild(card);
 
         const previewArea = card.querySelector('.preview');
-        const badgeHtml = `<div class="badge" style="background:${color}">${esc(source)}</div>`;
+        const iconBox = card.querySelector('.icon-box');
 
         if (isDrive) {
-            // 3D以外ならプレビューを表示
+            // Driveかつ、3Dファイル(glb, gltf)以外はiframeを追加
             if (!['glb', 'gltf'].includes(ext)) {
-                previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
+                // iframeの読み込みが完了したらアイコンを隠す
+                iframe.onload = () => { iconBox.style.display = 'none'; };
+                previewArea.appendChild(iframe);
             }
-            const delBtn = card.querySelector(`#btn-${fileId}`);
+            const delBtn = card.querySelector(`#del-${fileId}`);
             if (delBtn) delBtn.onclick = () => deleteFile(fileId, card);
         } else {
             // GitHub用
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
-                previewArea.innerHTML = badgeHtml + `<img src="${url}" loading="lazy">`;
+                const img = document.createElement('img');
+                img.src = url;
+                img.onload = () => { iconBox.style.display = 'none'; };
+                previewArea.appendChild(img);
             } else if (['txt','md','js','json','css'].includes(ext)) {
                 fetch(url).then(r => r.text()).then(t => {
-                    previewArea.innerHTML = badgeHtml + `<pre class="text-preview">${esc(t.substring(0, 500))}</pre>`;
-                }).catch(()=>{});
+                    iconBox.style.display = 'none';
+                    const pre = document.createElement('pre');
+                    pre.className = 'text-preview';
+                    pre.innerText = t.substring(0, 500);
+                    previewArea.appendChild(pre);
+                });
             } else if (['glb','gltf'].includes(ext)) {
-                previewArea.innerHTML = badgeHtml + `<model-viewer src="${esc(url)}" auto-rotate camera-controls></model-viewer>`;
+                const mv = document.createElement('model-viewer');
+                mv.src = url;
+                mv.setAttribute('auto-rotate', '');
+                mv.setAttribute('camera-controls', '');
+                mv.onload = () => { iconBox.style.display = 'none'; };
+                previewArea.appendChild(mv);
             }
         }
     }
 
     async function init() {
-        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-        // Drive
         fetch(GAS_URL).then(r => r.json()).then(data => {
             if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
         });
