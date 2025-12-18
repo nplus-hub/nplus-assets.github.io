@@ -3,117 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asset Manager Pro</title>
+    <title>Asset Manager</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --bg: #f0f2f5; --card: #ffffff; --primary: #007bff; --dark: #24292f; }
+        :root { --bg: #f8f9fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
         .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
         .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #e1e4e8; display: flex; flex-direction: column; }
-        .preview { width: 100%; height: 180px; background: #eaeff2; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e4e8; }
+        .preview { width: 100%; height: 160px; background: #eee; display: flex; align-items: center; justify-content: center; }
         .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
         .card-body { padding: 15px; }
-        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .actions { display: flex; gap: 8px; }
-        .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
+        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-group { display: flex; gap: 5px; }
+        .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 4px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
         .btn-primary { background: var(--primary); color: white; border: none; }
-        #debug-log { background: #fee; color: #c00; padding: 10px; margin-bottom: 20px; border-radius: 5px; display: none; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>Asset Library</h1>
-    <a href="https://github.com/nplus-hub/my-assets/tree/main/assets" target="_blank" class="admin-btn">管理画面(assetsフォルダ)を開く</a>
+    <h1>My Assets</h1>
+    <a href="https://github.com/nplus-hub/my-assets/upload/main" target="_blank" class="admin-btn">ファイルをアップロード</a>
 </div>
 
-<div id="debug-log"></div>
-
 <div class="container" id="gallery">
-    <p id="loading-msg">素材をスキャン中...</p>
+    <p id="msg">読み込み中...</p>
 </div>
 
 <script>
-    // 設定
-    const CONFIG = {
-        user: "nplus-hub",
-        repo: "my-assets",
-        folder: "assets",
-        branch: "main"
-    };
+    const USER = "nplus-hub";
+    const REPO = "my-assets";
+    
+    // GitHub APIでルートディレクトリのファイル一覧を取得
+    const apiURL = `https://api.github.com/repos/${USER}/${REPO}/contents/`;
+    // ファイル表示用のベースURL
+    const rawURL = `https://${USER}.github.io/${REPO}/`;
 
-    const apiURL = `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/contents/${CONFIG.folder}`;
-    const rawURL = `https://nplus-hub.github.io/my-assets/assets/`;
-
-    async function init() {
-        const gallery = document.getElementById('gallery');
-        const debug = document.getElementById('debug-log');
-        
+    async function load() {
         try {
             const res = await fetch(apiURL);
-            if (!res.ok) {
-                if(res.status === 403) throw new Error("APIの回数制限です。1時間待つか、ファイルを直接HTMLに記述してください。");
-                throw new Error("フォルダが見つからないか、リポジトリが非公開です。");
-            }
-            
             const files = await res.json();
-            document.getElementById('loading-msg').remove();
-
-            if (files.length === 0) {
-                gallery.innerHTML = "<p>assetsフォルダは空です。ファイルをアップロードしてください。</p>";
-                return;
-            }
+            const gallery = document.getElementById('gallery');
+            document.getElementById('msg').remove();
 
             files.forEach(file => {
-                if (file.name.startsWith('.') || file.type === 'dir') return;
+                // index.html自身や隠しファイルは表示しない
+                if (file.name === "index.html" || file.name.startsWith('.') || file.type === "dir") return;
 
-                const fileURL = rawURL + file.name;
+                const url = rawURL + file.name;
                 const ext = file.name.split('.').pop().toLowerCase();
                 
-                let type = 'other';
-                if (['png','jpg','jpeg','gif','webp'].includes(ext)) type = 'image';
-                else if (['mp4','webm'].includes(ext)) type = 'video';
-                else if (['mp3','wav'].includes(ext)) type = 'audio';
+                let type = 'file';
+                if (['png','jpg','jpeg','gif','webp'].includes(ext)) type = 'img';
+                else if (['mp4','webm'].includes(ext)) type = 'vid';
                 else if (['glb','gltf'].includes(ext)) type = '3d';
 
                 const card = document.createElement('div');
                 card.className = 'card';
-                let preview = '📄';
-                if (type === 'image') preview = `<img src="${fileURL}" loading="lazy">`;
-                else if (type === 'video') preview = `<video src="${fileURL}" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>`;
-                else if (type === 'audio') preview = `🎵<audio src="${fileURL}" controls style="width:90%"></audio>`;
-                else if (type === '3d') preview = `<model-viewer src="${fileURL}" auto-rotate camera-controls></model-viewer>`;
+                let content = '📄';
+                if (type === 'img') content = `<img src="${url}" loading="lazy">`;
+                else if (type === 'vid') content = `<video src="${url}" controls></video>`;
+                else if (type === '3d') content = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
 
                 card.innerHTML = `
-                    <div class="preview">${preview}</div>
+                    <div class="preview">${content}</div>
                     <div class="card-body">
                         <div class="file-name">${file.name}</div>
-                        <div class="actions">
-                            <a href="${fileURL}" download class="btn btn-primary">DL</a>
-                            <button class="btn" onclick="copyText('${fileURL}', this)">URLコピー</button>
+                        <div class="btn-group">
+                            <a href="${url}" download class="btn btn-primary">DL</a>
+                            <button class="btn" onclick="copyURL('${url}', this)">URLコピー</button>
                         </div>
                     </div>`;
                 gallery.appendChild(card);
             });
-
         } catch (e) {
-            debug.style.display = "block";
-            debug.innerText = "エラー: " + e.message;
-            document.getElementById('loading-msg').innerText = "読み込みに失敗しました。";
+            document.getElementById('msg').innerText = "読み込みエラーが発生しました。";
         }
     }
 
-    function copyText(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const t = btn.innerText;
-            btn.innerText = "OK";
-            setTimeout(() => btn.innerText = t, 1500);
+    function copyURL(url, btn) {
+        navigator.clipboard.writeText(url).then(() => {
+            const old = btn.innerText;
+            btn.innerText = "完了";
+            setTimeout(() => btn.innerText = old, 1000);
         });
     }
 
-    init();
+    load();
 </script>
 </body>
 </html>
