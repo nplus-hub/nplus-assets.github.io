@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Asset Library</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --accent: #007bff;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        h1 { text-align: center; margin-bottom: 40px; }
+        
+        /* グリッドレイアウトの設定 */
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* カードのデザイン */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover { transform: translateY(-5px); }
+
+        .card-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #eee;
+        }
+
+        .card-content { padding: 15px; flex-grow: 1; }
+        .card-title { font-weight: bold; margin-bottom: 10px; font-size: 1.1em; }
+        
+        /* ダウンロードボタン */
+        .download-btn {
+            display: block;
+            text-align: center;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        .download-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <h1>素材置き場ギャラリー</h1>
+
+    <div class="container">
+        <div class="card">
+            <img src="images/sample1.png" alt="素材1" class="card-image">
+            <div class="card-content">
+                <div class="card-title">背景素材：青空</div>
+                <a href="images/sample1.png" download class="download-btn">ダウンロード</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <img src="images/zip-icon.png" alt="ZIP素材" class="card-image">
+            <div class="card-content">
+                <div class="card-title">アイコン詰め合わせ</div>
+                <a href="files/icons.zip" download class="download-btn">ZIPを保存</a>
+            </div>
+        </div>
+
+        </div>
+
+</body>
+</html>
