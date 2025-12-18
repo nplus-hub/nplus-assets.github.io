@@ -1,2 +1,2 @@
-# nplus-assets
+# my-assets
 私の素材置場
