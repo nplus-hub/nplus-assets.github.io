@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager - Full Version</title>
+    <title>Asset Manager Pro - Stable Edition</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -17,7 +17,7 @@
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 10; }
-        .btn-group { display: flex; gap: 8px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
         .btn-del:hover { background: #ffeef0; }
@@ -29,7 +29,7 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLjfIx0MHAW1HPL-VDktkxt-Efnoql238JC_EtlSPeaRkVgjHf4kN3Ndnq4SWk23mJsbOb6MmC8gbRY6uEBKEDWp8jtSi9irx1wljAA1BESV1cM-6qGKZUghPHzdCsLrKEgqxwv_Sp-lXGRXsZD2BAGEufaFfIKYkrzBwc90yfaxAR5bZ8TETQXabBOmrGM6wnLWf0YeNaE6cKM5WU5Tr9oBBN1Wk-7W9nQ1rUiauEdxGwvQRoNe04hLwwMXXT7fw88GArkPLNUgtL35ffZO_0aQ6ZukcyYz3_1LCuAS&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyOFMUSBMVawDKVjJBc3Np1VaPYj75wOZQGY07CHOoDHiFCIFIFeBQ9CcvlrRKWEZDZ0w/exec"; 
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
@@ -44,15 +44,20 @@
             const response = await fetch(`${GAS_URL}?delId=${fileId}`);
             const result = await response.json();
             if (result.status === "success") {
-                cardElement.style.opacity = "0.2";
-                cardElement.style.pointerEvents = "none";
-            } else { alert("エラー: " + result.message); }
-        } catch (e) { alert("通信エラーが発生しました。"); }
+                alert("削除しました。");
+                cardElement.remove();
+            } else {
+                alert("エラー: " + result.message);
+            }
+        } catch (e) {
+            alert("通信エラー。GASのデプロイ設定（全員）を確認してください。");
+        }
     }
 
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
-        const ext = name.split('.').pop().toLowerCase();
+        const extMatch = name.match(/\.([a-z0-9]+)$/i);
+        const ext = extMatch ? extMatch[1].toLowerCase() : "";
         const emoji = getEmoji(ext);
         const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
 
@@ -70,7 +75,7 @@
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" id="delBtn-${fileId}">削除</button>` : ''}
                 </div>
             </div>
         `;
@@ -80,17 +85,16 @@
         const badgeHtml = `<div class="badge" style="background:${color}">${esc(source)}</div>`;
 
         if (isDrive) {
-            // Google公式プレビューを使用
             previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
-            card.querySelector(`#del-${fileId}`).onclick = () => deleteFile(fileId, card);
+            const delBtn = card.querySelector(`#delBtn-${fileId}`);
+            if (delBtn) delBtn.onclick = () => deleteFile(fileId, card);
         } else {
-            // GitHub用プレビュー
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
                 previewArea.innerHTML = badgeHtml + `<img src="${url}" loading="lazy">`;
-            } else if (['txt','md','js','json'].includes(ext)) {
+            } else if (['txt','md','js','json','css'].includes(ext)) {
                 fetch(url).then(r => r.text()).then(t => {
                     previewArea.innerHTML = badgeHtml + `<pre class="text-preview">${esc(t.substring(0, 500))}</pre>`;
-                });
+                }).catch(()=>{});
             } else if (['glb','gltf'].includes(ext)) {
                 previewArea.innerHTML = badgeHtml + `<model-viewer src="${esc(url)}" auto-rotate camera-controls></model-viewer>`;
             }
@@ -98,16 +102,15 @@
     }
 
     async function init() {
-        // GitHub取得
+        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             }).catch(e => console.error(e));
 
-        // Drive取得
+        // Drive
         fetch(GAS_URL).then(r => r.json()).then(data => {
             if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-            else if (data.status === "error") alert("Driveエラー: " + data.message);
         }).catch(e => console.error(e));
     }
     init();
