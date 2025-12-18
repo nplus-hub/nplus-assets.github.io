@@ -3,112 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Asset Manager</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <title>Asset Manager</title>
     <style>
         :root { --bg: #f8f9fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; --drive: #34a853; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
-        .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        body { font-family: sans-serif; background: var(--bg); padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
+        .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e4e8; position: relative; }
-        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; z-index: 10; }
+        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; }
         .badge-gh { background: var(--dark); }
         .badge-gd { background: var(--drive); }
-        .preview { width: 100%; height: 160px; background: #eee; display: flex; align-items: center; justify-content: center; }
-        .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
+        .preview { width: 100%; height: 160px; background: #eee; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview img { width: 100%; height: 100%; object-fit: contain; }
         .card-body { padding: 15px; }
         .file-name { font-weight: bold; font-size: 13px; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn-group { display: flex; gap: 5px; }
-        .btn { flex: 1; padding: 8px; font-size: 11px; border-radius: 4px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
-        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn { display: block; width: 100%; padding: 8px; font-size: 11px; border-radius: 4px; cursor: pointer; text-align: center; border: 1px solid #ccc; background: #fff; text-decoration: none; color: #333; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>All Assets</h1>
-    <a href="https://github.com/nplus-hub/my-assets/upload/main" target="_blank" class="admin-btn">GitHubへアップロード</a>
+    <h1>Assets</h1>
+    <a href="https://github.com/nplus-hub/my-assets/upload/main" target="_blank" class="admin-btn">GitHubへ追加</a>
 </div>
 
 <div class="container" id="gallery">
-    <p id="msg">アセットを読み込み中...</p>
+    <p id="msg">読み込み中...</p>
 </div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    // ★【ここに貼り付け】GASのウェブアプリURL（末尾が /exec のもの）
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxHE0NfOXsXjSnO3MCdgInIhbezvEG6bUfuevQsXMfug4YP8XJdBBF6cQTkbS25c74wPA/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzDkXxfI5GB-WlOE4PYAazoxl6P_AEIIddZrkftIGmDZrYoTOy8_-bLe_pubN6db_PcRg/exec"; // ★新しく発行した /exec URL
 
-    const gallery = document.getElementById('gallery');
-
-    function createCard(name, url, type, source) {
+    function createCard(name, url, source) {
         const card = document.createElement('div');
         card.className = 'card';
         const badgeClass = source === 'GitHub' ? 'badge-gh' : 'badge-gd';
         
-        let content = '📄';
-        if (type === 'img') content = `<img src="${url}" loading="lazy" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Preview%20Error'">`;
-        else if (type === 'vid') content = `<video src="${url}" controls style="width:100%; height:100%;"></video>`;
-        else if (type === '3d') content = `<model-viewer src="${url}" auto-rotate camera-controls style="width:100%; height:100%;"></model-viewer>`;
-
         card.innerHTML = `
             <div class="badge ${badgeClass}">${source}</div>
-            <div class="preview">${content}</div>
+            <div class="preview"><img src="${url}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'"></div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
-                <div class="btn-group">
-                    <a href="${url}" target="_blank" class="btn btn-primary">開く</a>
-                    <button class="btn" onclick="copyText('${url}', this)">URLコピー</button>
-                </div>
+                <button class="btn" onclick="copyText('${url}', this)">URLをコピー</button>
             </div>`;
-        gallery.appendChild(card);
+        document.getElementById('gallery').appendChild(card);
     }
 
     function copyText(text, btn) {
         navigator.clipboard.writeText(text).then(() => {
-            const old = btn.innerText; btn.innerText = "完了";
+            const old = btn.innerText; btn.innerText = "完了！";
             setTimeout(() => btn.innerText = old, 1000);
         });
     }
 
     async function init() {
-        const msg = document.getElementById('msg');
-
-        // 1. GitHubのファイルを読み込む
+        // GitHubから読み込み
         try {
             const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`);
             const files = await res.json();
-            if (Array.isArray(files)) {
-                files.forEach(file => {
-                    if (file.name === "index.html" || file.name.startsWith('.') || file.type === "dir") return;
-                    const ext = file.name.split('.').pop().toLowerCase();
-                    let type = 'file';
-                    if (['png','jpg','jpeg','gif','webp'].includes(ext)) type = 'img';
-                    else if (['mp4','webm'].includes(ext)) type = 'vid';
-                    else if (['glb','gltf'].includes(ext)) type = '3d';
-                    createCard(file.name, `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/${file.name}`, type, 'GitHub');
-                });
-            }
-        } catch (e) { console.error("GitHub Error:", e); }
-
-        // 2. Googleドライブのファイルを読み込む
-        if (GAS_URL.includes("http")) {
-            try {
-                const res = await fetch(GAS_URL);
-                const driveFiles = await res.json();
-                if (Array.isArray(driveFiles)) {
-                    driveFiles.forEach(file => {
-                        // ドライブの直リンクを生成
-                        const driveUrl = `https://drive.google.com/uc?export=view&id=${file.id}`;
-                        createCard(file.name, driveUrl, 'img', 'Drive');
-                    });
+            files.forEach(f => {
+                if(f.name.includes('.') && f.name !== 'index.html') {
+                    createCard(f.name, `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/${f.name}`, 'GitHub');
                 }
-            } catch (e) { console.error("Drive Error:", e); }
-        }
+            });
+        } catch(e) {}
 
-        if (msg) msg.remove();
+        // Googleドライブから読み込み
+        try {
+            const res = await fetch(GAS_URL);
+            const driveFiles = await res.json();
+            driveFiles.forEach(f => {
+                if(!f.error) {
+                    const url = `https://drive.google.com/uc?export=view&id=${f.id}`;
+                    createCard(f.name, url, 'Drive');
+                }
+            });
+        } catch(e) {}
+
+        document.getElementById('msg').remove();
     }
 
     init();
