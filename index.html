@@ -6,24 +6,23 @@
     <title>Asset Manager</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --bg: #f4f7f6; --card: #ffffff; --primary: #007bff; --admin: #24292f; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #24292f; }
-        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
+        :root { --bg: #f4f7f6; --card: #ffffff; --primary: #007bff; --dark: #24292f; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; line-height: 1.5; }
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         
-        /* 管理用ボタン */
+        /* 管理用ボタン：もっとも安全なリポジトリTOPへのリンク */
         .admin-btn { 
-            background: var(--admin); color: white; text-decoration: none; padding: 12px 24px; 
+            background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; 
             border-radius: 6px; font-weight: bold; font-size: 14px;
         }
-        .admin-btn:hover { background: #000; opacity: 0.9; }
 
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #d0d7de; display: flex; flex-direction: column; }
+        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #d0d7de; }
         .preview-area { width: 100%; height: 180px; background: #e9ecef; display: flex; align-items: center; justify-content: center; position: relative; }
         .preview-area img, .preview-area video, .preview-area model-viewer { width: 100%; height: 100%; object-fit: contain; }
         
         .card-body { padding: 15px; }
-        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .actions { display: flex; gap: 5px; }
         .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; text-align: center; text-decoration: none; color: #333; background: #fff; }
         .btn-primary { background: var(--primary); color: white; border: none; }
@@ -33,51 +32,30 @@
 
 <div class="header">
     <h1>Asset Library</h1>
-    <a href="https://github.com/nplus-assets/my-assets/tree/main/assets" id="upload-link" target="_blank" class="admin-btn">
-        ＋ 素材を管理・追加
+    <a href="https://github.com/nplus-assets/my-assets" target="_blank" class="admin-btn">
+        GitHubで素材を管理
     </a>
 </div>
 
 <div class="container" id="gallery"></div>
 
 <script>
-    // 【素材リスト】ここにファイル情報を追加
+    /**
+     * 【素材の編集手順】
+     * 1. assetsフォルダにファイルをアップロード
+     * 2. 下のリストに情報を追加（ファイル名の大文字小文字に注意！）
+     */
     const myAssets = [
-        { name: "サンプル画像", file: "sample.png", type: "image" }
+        { name: "サンプル画像", file: "sample.png", type: "image" },
+        { name: "サンプル動画", file: "video.mp4", type: "video" },
+        { name: "サンプル音楽", file: "music.mp3", type: "audio" },
+        { name: "サンプル3D", file: "model.glb", type: "3d" }
     ];
 
-    const folderPath = "https://nplus-assets.github.io/my-assets/assets/";
+    // エラー防止のため、現在のページの場所からassetsフォルダを参照
+    const folderPath = "./assets/";
 
     const gallery = document.getElementById('gallery');
     myAssets.forEach(item => {
-        const url = folderPath + item.file;
-        const card = document.createElement('div');
-        card.className = 'card';
-        let preview = '';
-        if(item.type === 'image') preview = `<img src="${url}">`;
-        else if(item.type === 'video') preview = `<video src="${url}" controls></video>`;
-        else if(item.type === 'audio') preview = `🎵<audio src="${url}" controls style="width:90%"></audio>`;
-        else if(item.type === '3d') preview = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
-
-        card.innerHTML = `
-            <div class="preview-area">${preview}</div>
-            <div class="card-body">
-                <div class="file-name">${item.name}</div>
-                <div class="actions">
-                    <a href="${url}" download class="btn btn-primary">DL</a>
-                    <button class="btn" onclick="copyLink('${url}', this)">URLコピー</button>
-                </div>
-            </div>`;
-        gallery.appendChild(card);
-    });
-
-    function copyLink(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const tx = btn.innerText;
-            btn.innerText = "OK!";
-            setTimeout(() => btn.innerText = tx, 1000);
-        });
-    }
-</script>
-</body>
-</html>
+        const relativeUrl = folderPath + item.file;
+        // URLコピー用にブラウザが認識している
