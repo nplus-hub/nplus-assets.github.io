@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager</title>
+    <title>Asset Manager Pro</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -10,10 +10,15 @@
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; }
         .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .preview img, model-viewer, video, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
+        
+        /* テキスト表示スタイル */
         .text-preview { font-size: 10px; padding: 10px; background: #2d2d2d; color: #adff2f; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow-y: auto; box-sizing: border-box; text-align: left; }
+        
+        /* アイコン表示スタイル */
         .icon-container { text-align: center; display: flex; flex-direction: column; align-items: center; }
         .icon-emoji { font-size: 48px; margin-bottom: 8px; }
         .ext-badge { font-size: 11px; font-weight: bold; color: white; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
+        
         .card-body { padding: 15px; background: white; }
         .file-name { font-size: 13px; font-weight: bold; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 5; }
@@ -21,20 +26,23 @@
     </style>
 </head>
 <body>
+
 <div class="container" id="gallery"></div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★デプロイ後のURLに書き換え
 
+    // 拡張子ごとのアイコン設定
     function getFileIconInfo(ext) {
         const types = {
-            pdf: { emoji: '📄', color: '#ff4b2b' },
-            glb: { emoji: '📦', color: '#3d5afe' },
-            zip: { emoji: '📚', color: '#ffa000' },
-            mp3: { emoji: '🎵', color: '#e91e63' },
-            txt: { emoji: '📝', color: '#607d8b' }
+            pdf:  { emoji: '📄', color: '#ff4b2b' },
+            glb:  { emoji: '📦', color: '#3d5afe' },
+            gltf: { emoji: '📦', color: '#3d5afe' },
+            zip:  { emoji: '📚', color: '#ffa000' },
+            mp3:  { emoji: '🎵', color: '#e91e63' },
+            txt:  { emoji: '📝', color: '#607d8b' }
         };
         return types[ext] || { emoji: '📄', color: '#9e9e9e' };
     }
@@ -44,71 +52,11 @@
         const card = document.createElement('div');
         card.className = 'card';
 
-        // ★修正ポイント：ファイル名から「のコピー」を除去し、正しく拡張子を取得する
-        const cleanName = name.replace(/ のコピー|Copy of /g, "");
-        const ext = cleanName.split('.').pop().toLowerCase();
+        // ★重要：名前の中に「コピー」が含まれていても、直前の拡張子を特定するロジック
+        const match = name.match(/\.([a-z0-9]+)(?:\s.*)?$/i);
+        const ext = match ? match[1].toLowerCase() : "";
         
         let mediaHtml = '';
 
-        // 1. テキスト（GIFなどの画像より先に判定させないよう、拡張子を厳密にチェック）
-        if (['txt', 'js', 'json', 'html', 'css', 'md'].includes(ext)) {
-            const textId = 'txt-' + Math.random().toString(36).substr(2, 9);
-            mediaHtml = `<pre class="text-preview" id="${textId}">読み込み中...</pre>`;
-            const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
-            fetch(fetchUrl).then(r => r.text()).then(t => {
-                const el = document.getElementById(textId);
-                if (el) el.innerText = t.substring(0, 1000);
-            }).catch(() => { if(document.getElementById(textId)) document.getElementById(textId).innerText = "Error"; });
-        } 
-        // 2. 画像（GIF対応強化）
-        else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-            // Google Driveの画像（GIF含む）もiframeではなく直接表示を試みる
-            const imgUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-            mediaHtml = `<img src="${imgUrl}" loading="lazy" onerror="this.src='https://placehold.jp/200x150.png?text=Preview%20Error'">`;
-        }
-        // 3. Google Drive専用（PDF・動画）
-        else if (isDrive) {
-            if (['pdf', 'mp4', 'webm'].includes(ext)) {
-                mediaHtml = `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
-            } else {
-                const icon = getFileIconInfo(ext);
-                mediaHtml = `<div class="icon-container"><span class="icon-emoji">${icon.emoji}</span><span class="ext-badge" style="background:${icon.color}">${ext}</span></div>`;
-            }
-        } 
-        // 4. GitHub専用（3D・マルチメディア）
-        else {
-            if (['glb', 'gltf'].includes(ext)) {
-                mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
-            } else if (['mp4', 'webm'].includes(ext)) {
-                mediaHtml = `<video controls muted src="${url}"></video>`;
-            } else if (['pdf'].includes(ext)) {
-                mediaHtml = `<iframe src="${url}"></iframe>`;
-            } else {
-                const icon = getFileIconInfo(ext);
-                mediaHtml = `<div class="icon-container"><span class="icon-emoji">${icon.emoji}</span><span class="ext-badge" style="background:${icon.color}">${ext}</span></div>`;
-            }
-        }
-
-        const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-        card.innerHTML = `
-            <div class="preview"><div class="badge" style="background:${color}">${source}</div>${mediaHtml}</div>
-            <div class="card-body">
-                <div class="file-name" title="${name}">${name}</div>
-                <button class="btn" onclick="navigator.clipboard.writeText('${copyUrl}')">URLをコピー</button>
-            </div>`;
-        gallery.appendChild(card);
-    }
-
-    async function init() {
-        fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
-            .then(res => res.json())
-            .then(data => { if(Array.isArray(data)) data.forEach(f => { if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f'); }); });
-
-        fetch(GAS_URL)
-            .then(res => res.json())
-            .then(driveData => { if(Array.isArray(driveData)) driveData.forEach(f => { if(!f.error) createCard(f.name, '', 'Drive', '#34a853', true, f.id); }); });
-    }
-    init();
-</script>
-</body>
-</html>
+        // 1. テキスト系プレビュー (GitHub/Drive共通)
+        if (['txt', 'js', 'json', 'html',
