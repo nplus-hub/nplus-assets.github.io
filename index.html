@@ -1,32 +1,47 @@
-<div class="header">
-    <h1>Google Drive 素材一覧</h1>
-    <p>※Googleドライブのフォルダにファイルを追加すると、ここに自動で表示されます</p>
+<div class="container" id="gallery">
+    <p id="msg">ドライブから素材を取得中...</p>
 </div>
 
-<div class="container" id="drive-gallery">
-    </div>
-
 <script>
-    const GAS_URL = "あなたのGASウェブアプリURL";
+    const GAS_URL = "あなたの新しいGASウェブアプリURL";
 
-    async function fetchFromDrive() {
-        const res = await fetch(GAS_URL);
-        const files = await res.json();
-        const gallery = document.getElementById('drive-gallery');
-
-        files.forEach(file => {
-            // ドライブの画像を表示するための直リンクを生成
-            const imageUrl = `https://lh3.googleusercontent.com/d/${file.id}`;
+    async function loadFromDrive() {
+        const msg = document.getElementById('msg');
+        try {
+            const res = await fetch(GAS_URL);
+            if (!res.ok) throw new Error('ネットワーク応答が正常ではありません');
             
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="preview"><img src="${imageUrl}"></div>
-                <div class="file-name">${file.name}</div>
-                <button class="btn" onclick="navigator.clipboard.writeText('${imageUrl}')">URLコピー</button>
-            `;
-            gallery.appendChild(card);
-        });
+            const files = await res.json();
+            const gallery = document.getElementById('gallery');
+            msg.remove();
+
+            if (files.length === 0) {
+                gallery.innerHTML = "<p>フォルダにファイルが見つかりません。</p>";
+                return;
+            }
+
+            files.forEach(file => {
+                // ドライブの画像を表示するための最も正確なURL形式
+                const imageUrl = `https://lh3.googleusercontent.com/u/0/d/${file.id}`;
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="preview"><img src="${imageUrl}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Preview%20Error'"></div>
+                    <div class="file-name">${file.name}</div>
+                    <button class="btn" onclick="copyToClipboard('${imageUrl}')">URLをコピー</button>
+                `;
+                gallery.appendChild(card);
+            });
+        } catch (e) {
+            msg.innerText = "読み込みエラー: " + e.message + "\nGASのURLが正しいか、デプロイ設定が「全員」になっているか確認してください。";
+            console.error(e);
+        }
     }
-    fetchFromDrive();
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => alert("URLをコピーしました"));
+    }
+
+    loadFromDrive();
 </script>
