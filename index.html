@@ -3,82 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asset Manager</title>
+    <title>Auto Asset Manager</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         :root { --bg: #f5f7fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        .header { max-width: 1000px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
-        
-        /* 管理用ボタン：ユーザー名を nplus-hub に完全に修正 */
-        .admin-btn { 
-            background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; 
-            border-radius: 6px; font-weight: bold; font-size: 14px;
-        }
-        .admin-btn:hover { background: #000; }
-
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #dee2e6; }
-        .preview { width: 100%; height: 160px; background: #e9ecef; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
+        .admin-btn { background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #e1e4e8; display: flex; flex-direction: column; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .preview { width: 100%; height: 180px; background: #eaeff2; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
         .card-body { padding: 15px; }
-        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-group { display: flex; gap: 5px; }
-        .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 4px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
+        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .actions { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid #ccc; background: #fff; color: #333; }
         .btn-primary { background: var(--primary); color: white; border: none; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>Asset Manager</h1>
-    <a href="https://github.com/nplus-hub/my-assets" target="_blank" class="admin-btn">
-        管理画面を開く
-    </a>
+    <h1>Asset Library (Auto)</h1>
+    <a href="https://github.com/nplus-hub/my-assets/tree/main/assets" target="_blank" class="admin-btn">素材を追加</a>
 </div>
 
-<div class="container" id="gallery"></div>
+<div class="container" id="gallery">
+    <p id="loading-msg">素材を読み込み中...</p>
+</div>
 
 <script>
-    // 【素材リスト】ここにファイル情報を正確に追記してください
-    const myAssets = [
-        { name: "サンプル画像", file: "sample.png", type: "image" }
-    ];
+    // 設定情報
+    const USER = "nplus-hub";
+    const REPO = "my-assets";
+    const FOLDER = "assets";
 
-    // 現在のサイトURLからassetsフォルダの場所を自動計算
-    const assetBase = window.location.origin + window.location.pathname.replace(/\/$/, "") + "/assets/";
+    // GitHub API URL（フォルダ内のファイル一覧を取得）
+    const apiURL = `https://api.github.com/repos/${USER}/${REPO}/contents/${FOLDER}`;
+    // 実際のファイル配信用URL
+    const rawBaseURL = `https://nplus-hub.github.io/my-assets/assets/`;
 
-    const gallery = document.getElementById('gallery');
-    myAssets.forEach(item => {
-        const fileURL = assetBase + item.file;
-        const card = document.createElement('div');
-        card.className = 'card';
-        
-        let preview = '';
-        if(item.type === 'image') preview = `<img src="${fileURL}" onerror="this.src='https://placehold.jp/20/cccccc/ffffff/200x200.png?text=Not%20Found'">`;
-        else if(item.type === 'video') preview = `<video src="${fileURL}" controls></video>`;
-        else if(item.type === 'audio') preview = `🎵<audio src="${fileURL}" controls style="width:90%"></audio>`;
-        else if(item.type === '3d') preview = `<model-viewer src="${fileURL}" auto-rotate camera-controls></model-viewer>`;
+    async function loadAssets() {
+        const gallery = document.getElementById('gallery');
+        const loadingMsg = document.getElementById('loading-msg');
 
-        card.innerHTML = `
-            <div class="preview">${preview}</div>
-            <div class="card-body">
-                <div class="file-name">${item.name}</div>
-                <div class="btn-group">
-                    <a href="${fileURL}" download class="btn btn-primary">DL</a>
-                    <button class="btn" onclick="copyText('${fileURL}', this)">URLコピー</button>
-                </div>
-            </div>`;
-        gallery.appendChild(card);
-    });
+        try {
+            const response = await fetch(apiURL);
+            if (!response.ok) throw new Error("APIエラー");
+            const files = await response.json();
 
-    function copyText(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const original = btn.innerText;
-            btn.innerText = "完了";
-            setTimeout(() => btn.innerText = original, 1500);
+            loadingMsg.remove();
+
+            files.forEach(file => {
+                // ファイル名がドットで始まるもの（.keepなど）は除外
+                if (file.name.startsWith('.')) return;
+
+                const fileURL = rawBaseURL + file.name;
+                const ext = file.name.split('.').pop().toLowerCase();
+                
+                // 拡張子からタイプを自動判別
+                let type = 'other';
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) type = 'image';
+                else if (['mp4', 'webm'].includes(ext)) type = 'video';
+                else if (['mp3', 'wav'].includes(ext)) type = 'audio';
+                else if (['glb', 'gltf'].includes(ext)) type = '3d';
+
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let preview = '📄';
+                if (type === 'image') preview = `<img src="${fileURL}" loading="lazy">`;
+                else if (type === 'video') preview = `<video src="${fileURL}" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>`;
+                else if (type === 'audio') preview = `🎵<audio src="${fileURL}" controls style="width:90%"></audio>`;
+                else if (type === '3d') preview = `<model-viewer src="${fileURL}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
+
+                card.innerHTML = `
+                    <div class="preview">${preview}</div>
+                    <div class="card-body">
+                        <div class="file-name" title="${file.name}">${file.name}</div>
+                        <div class="actions">
+                            <a href="${fileURL}" download class="btn btn-primary">DL</a>
+                            <button class="btn" onclick="copyLink('${fileURL}', this)">URLコピー</button>
+                        </div>
+                    </div>`;
+                gallery.appendChild(card);
+            });
+        } catch (error) {
+            loadingMsg.innerText = "エラー: 素材の自動取得に失敗しました。";
+            console.error(error);
+        }
+    }
+
+    function copyLink(url, btn) {
+        navigator.clipboard.writeText(url).then(() => {
+            const old = btn.innerText;
+            btn.innerText = "OK!";
+            setTimeout(() => btn.innerText = old, 1500);
         });
     }
+
+    loadAssets();
 </script>
 </body>
 </html>
