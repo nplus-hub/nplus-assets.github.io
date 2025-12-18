@@ -7,115 +7,77 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         :root { --bg: #f4f7f6; --card: #ffffff; --primary: #007bff; --admin: #24292f; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #24292f; }
-        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #24292f; }
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; }
         
-        /* 管理者用アップロードボタン */
+        /* 管理用ボタン */
         .admin-btn { 
-            background: var(--admin); color: white; text-decoration: none; padding: 10px 20px; 
-            border-radius: 6px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+            background: var(--admin); color: white; text-decoration: none; padding: 12px 24px; 
+            border-radius: 6px; font-weight: bold; font-size: 14px;
         }
-        .admin-btn:hover { background: #000; }
+        .admin-btn:hover { background: #000; opacity: 0.9; }
 
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        
-        /* カードデザイン */
-        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); border: 1px solid #d0d7de; }
-        .preview-area { width: 100%; height: 180px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; display: flex; align-items: center; justify-content: center; position: relative; }
+        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #d0d7de; display: flex; flex-direction: column; }
+        .preview-area { width: 100%; height: 180px; background: #e9ecef; display: flex; align-items: center; justify-content: center; position: relative; }
         .preview-area img, .preview-area video, .preview-area model-viewer { width: 100%; height: 100%; object-fit: contain; }
         
-        .card-body { padding: 16px; }
-        .file-name { font-weight: 600; font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* 操作ボタン */
-        .actions { display: flex; gap: 8px; }
-        .btn { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; cursor: pointer; border: 1px solid #d0d7de; text-align: center; text-decoration: none; color: #24292f; background: #f6f8fa; }
-        .btn:hover { background: #f3f4f6; }
+        .card-body { padding: 15px; }
+        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+        .actions { display: flex; gap: 5px; }
+        .btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; text-align: center; text-decoration: none; color: #333; background: #fff; }
         .btn-primary { background: var(--primary); color: white; border: none; }
-        .btn-primary:hover { background: #0069d9; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1 style="font-size: 24px;">Asset Library</h1>
-    <a href="https://github.com/nplus-assets/my-assets/tree/main/assets" target="_blank" class="admin-btn">
-        <span>＋</span> 素材を管理/追加
+    <h1>Asset Library</h1>
+    <a href="https://github.com/nplus-assets/my-assets/tree/main/assets" id="upload-link" target="_blank" class="admin-btn">
+        ＋ 素材を管理・追加
     </a>
 </div>
 
-<div class="container" id="gallery">
-    </div>
+<div class="container" id="gallery"></div>
 
 <script>
-    /**
-     * 【重要】素材を追加したら、下のリストに情報を書き加えてください。
-     * name: 画面に表示する名前
-     * file: 実際のファイル名（assetsフォルダ内のもの）
-     * type: 'image', 'video', 'audio', '3d' のいずれか
-     */
+    // 【素材リスト】ここにファイル情報を追加
     const myAssets = [
-        { name: "サンプル画像", file: "sample.png", type: "image" },
-        { name: "デモ動画", file: "demo.mp4", type: "video" },
-        { name: "BGM", file: "music.mp3", type: "audio" },
-        { name: "3Dモデル", file: "model.glb", type: "3d" }
+        { name: "サンプル画像", file: "sample.png", type: "image" }
     ];
 
-    // ファイルが保存されている場所のURL
     const folderPath = "https://nplus-assets.github.io/my-assets/assets/";
 
     const gallery = document.getElementById('gallery');
-
     myAssets.forEach(item => {
         const url = folderPath + item.file;
         const card = document.createElement('div');
         card.className = 'card';
-
         let preview = '';
-        if(item.type === 'image') preview = `<img src="${url}" loading="lazy">`;
-        else if(item.type === 'video') preview = `<video src="${url}" controls muted></video>`;
-        else if(item.type === 'audio') preview = `<div style="font-size:40px;">🎵</div><audio src="${url}" controls style="position:absolute; bottom:5px; width:90%; height:30px;"></audio>`;
+        if(item.type === 'image') preview = `<img src="${url}">`;
+        else if(item.type === 'video') preview = `<video src="${url}" controls></video>`;
+        else if(item.type === 'audio') preview = `🎵<audio src="${url}" controls style="width:90%"></audio>`;
         else if(item.type === '3d') preview = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
 
         card.innerHTML = `
             <div class="preview-area">${preview}</div>
             <div class="card-body">
-                <div class="file-name" title="${item.name}">${item.name}</div>
+                <div class="file-name">${item.name}</div>
                 <div class="actions">
-                    <a href="${url}" download class="btn btn-primary">ダウンロード</a>
-                    <button class="btn" onclick="copyToClipboard('${url}', this)">URLコピー</button>
+                    <a href="${url}" download class="btn btn-primary">DL</a>
+                    <button class="btn" onclick="copyLink('${url}', this)">URLコピー</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         gallery.appendChild(card);
     });
 
-    // コピー機能の正確な実装
-    function copyToClipboard(text, btn) {
-        if (!navigator.clipboard) {
-            // 旧ブラウザ対応用
-            const el = document.createElement('textarea');
-            el.value = text;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            showFeedback(btn);
-            return;
-        }
-        navigator.clipboard.writeText(text).then(() => showFeedback(btn));
-    }
-
-    function showFeedback(btn) {
-        const originalText = btn.innerText;
-        btn.innerText = "コピー完了";
-        btn.style.backgroundColor = "#e6ffec";
-        setTimeout(() => {
-            btn.innerText = originalText;
-            btn.style.backgroundColor = "";
-        }, 1500);
+    function copyLink(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            const tx = btn.innerText;
+            btn.innerText = "OK!";
+            setTimeout(() => btn.innerText = tx, 1000);
+        });
     }
 </script>
-
 </body>
 </html>
