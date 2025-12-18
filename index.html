@@ -26,21 +26,20 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★最新のURLに書き換え
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
         const card = document.createElement('div');
         card.className = 'card';
 
-        // 拡張子の取得（末尾が「コピー」でも対応できるよう判定を調整）
-        const ext = name.split('.').pop().toLowerCase();
+        // 拡張子を正しく取得
+        const match = name.match(/\.([a-z0-9]+)/i);
+        const ext = match ? match[1].toLowerCase() : "";
+        
         let mediaHtml = '';
-
-        // アイコン表示用のテンプレート
         const iconHtml = `<div class="icon-box"><span class="icon-emoji">📄</span><span class="ext-label">${ext}</span></div>`;
 
-        // 1. テキスト（拡張子が正常な場合のみ）
         if (['txt', 'js', 'json', 'html', 'css', 'md'].includes(ext)) {
             const textId = 'txt-' + Math.random().toString(36).substr(2, 9);
             mediaHtml = `<pre class="text-preview" id="${textId}">Loading...</pre>`;
@@ -53,27 +52,23 @@
                     if (el) el.innerHTML = iconHtml;
                 });
         } 
-        // 2. 画像
         else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
             const imgUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-            mediaHtml = `<img src="${imgUrl}" onerror="this.parentElement.innerHTML='${iconHtml}'">`;
+            // 不要な文字の混入を防ぐため、シンプルな文字列結合に変更
+            mediaHtml = '<img src="' + imgUrl + '" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'' + iconHtml + '\'">';
         } 
-        // 3. GitHub側の3Dファイル
         else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
-            mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
+            mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
         }
-        // 4. PDF (Google Drive/GitHub)
         else if (['pdf'].includes(ext)) {
             const pdfUrl = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
             mediaHtml = `<iframe src="${pdfUrl}"></iframe>`;
         }
-        // 5. その他、またはファイル名が異常（〜 のコピーなど）な場合
         else {
             mediaHtml = iconHtml;
         }
 
         const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${source}</div>
@@ -87,31 +82,17 @@
     }
 
     async function init() {
-        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
-            .then(res => res.json())
-            .then(data => {
-                if(Array.isArray(data)) {
-                    data.forEach(f => {
-                        if(f.type === 'file' && f.name !== 'index.html') {
-                            createCard(f.name, f.download_url, 'GitHub', '#24292f');
-                        }
-                    });
-                }
+            .then(res => res.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => {
+                    if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f');
+                });
             });
-
-        // Drive
-        fetch(GAS_URL)
-            .then(res => res.json())
-            .then(driveData => {
-                if(Array.isArray(driveData)) {
-                    driveData.forEach(f => {
-                        if(!f.error) {
-                            createCard(f.name, '', 'Drive', '#34a853', true, f.id);
-                        }
-                    });
-                }
+        fetch(GAS_URL).then(res => res.json()).then(driveData => {
+            if(Array.isArray(driveData)) driveData.forEach(f => {
+                if(!f.error) createCard(f.name, '', 'Drive', '#34a853', true, f.id);
             });
+        });
     }
     init();
 </script>
