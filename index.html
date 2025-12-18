@@ -1,43 +1,8 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Asset Library</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
-    <style>
-        :root { --bg: #f0f2f5; --card: #ffffff; --primary: #2563eb; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .card-content { padding: 15px; }
-        .label { font-size: 0.8em; color: #666; font-weight: bold; text-transform: uppercase; }
-        .title { font-size: 1.1em; margin: 5px 0 15px 0; font-weight: bold; }
-        
-        /* 各メディアのサイズ調整 */
-        img, video, model-viewer { width: 100%; height: 200px; object-fit: cover; background: #000; }
-        audio { width: 100%; margin-top: 10px; }
-        
-        .btn { display: block; text-align: center; background: var(--primary); color: white; text-decoration: none; padding: 10px; border-radius: 6px; }
-    </style>
-</head>
-<body>
-
-<h1 style="text-align:center;">NPLUS 素材アーカイブ</h1>
-
-<div class="container">
-    <div class="card">
-        <img src="assets/image.png" alt="画像素材">
-        <div class="card-content">
-            <div class="label">Image</div>
-            <div class="title">背景イラスト 01</div>
-            <a href="assets/image.png" download class="btn">ダウンロード</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <div style="height:200px; display:flex; align-items:center; justify-content:center; background:#333; color:white;">🎵 AUDIO</div>
-        <div class="card-content">
-            <div class="label">Music / SE</div>
-            <div class="title">BGM: 明るい兆し</div>
-            <audio controls src="assets/music.mp3"></audio>
+<div style="background:#eee; padding:10px; text-align:center; border-radius:10px;">
+    <p>【管理者用】素材の追加はこちらから</p>
+    <a href="https://github.com/nplus-assets/nplus-assets.github.io/upload/main/assets" 
+       target="_blank" 
+       style="color:blue; font-weight:bold;">
+       👉 ここをクリックしてassetsフォルダにアップロード
+    </a>
+</div>
