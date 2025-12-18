@@ -1,2 +1,2 @@
-# nplus-assets.github.io
+# nplus-assets
 私の素材置場
