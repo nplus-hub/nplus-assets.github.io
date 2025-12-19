@@ -11,7 +11,7 @@
     </script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --danger: #cf222e; }
+        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         
@@ -19,13 +19,13 @@
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 420px; display: flex; flex-direction: column; position: relative; }
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; object-fit: contain; }
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; object-fit: contain; overflow: auto; font-size: 10px; padding: 10px; box-sizing: border-box; white-space: pre-wrap; color: #333; }
         
         .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: 600; word-break: break-all; height: 3em; overflow: hidden; color: #24292f; }
+        .file-name { font-size: 13px; font-weight: 600; word-break: break-all; height: 3em; overflow: hidden; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 11px; font-weight: bold; }
@@ -68,29 +68,35 @@
                 if (res.ok) { element.remove(); alert("削除完了"); }
             } catch (e) { alert("削除エラー"); }
         } else {
-            alert("GitHubのファイルはGitHub上で削除してください");
+            alert("GitHub上での削除を推奨します");
         }
     }
 
-    function createCard(name, url, source, color, isDrive, fileId) {
+    async function createCard(name, url, source, color, isDrive, fileId) {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
         const is3D = lower.endsWith('.glb');
         const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
+        const isText = ['txt','md','json','js','css','html'].some(e => lower.endsWith(e));
         
         const card = document.createElement('div');
         card.className = 'card';
         
-        // プレビュータグの生成
         let previewHtml = '';
         if (is3D) {
-            const downloadUrl = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
-            previewHtml = `<model-viewer class="preview-content" src="${downloadUrl}" camera-controls auto-rotate></model-viewer>`;
+            const src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+            previewHtml = `<model-viewer class="preview-content" src="${src}" camera-controls auto-rotate></model-viewer>`;
         } else if (isImage && !isDrive) {
             previewHtml = `<img src="${url}" class="preview-content">`;
+        } else if (isText && !isDrive) {
+            previewHtml = `<div class="preview-content" id="text-${fileId}">Loading...</div>`;
+            fetch(url).then(r => r.text()).then(t => {
+                const el = document.getElementById(`text-${fileId}`);
+                if (el) el.textContent = t;
+            });
         } else {
-            const previewUrl = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
-            previewHtml = `<iframe class="preview-content" src="${previewUrl}"></iframe>`;
+            const src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+            previewHtml = `<iframe class="preview-content" src="${src}"></iframe>`;
         }
 
         card.innerHTML = `
