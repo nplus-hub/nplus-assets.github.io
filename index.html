@@ -20,16 +20,15 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
-        
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 410px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア：以前の安定版の重なり構造 */
+        /* プレビューエリア */
         .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
         
-        /* 前面：プレビュー (z-index: 5) */
-        model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 5; background: #eaedef; }
+        /* プレビュー本体 (z-index: 10) */
+        model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
         
-        /* 背面：アイコン (z-index: 1) */
+        /* 背面アイコン (z-index: 1) */
         .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .fallback-emoji { font-size: 40px; display: block; }
         .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-top: 5px; }
@@ -42,10 +41,8 @@
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; text-align: center; }
         .btn-del { color: var(--danger); border-color: var(--danger); }
         
-        /* モーダル */
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
         .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
-        .modal-box input { width: 100%; font-size: 20px; text-align: center; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -64,38 +61,6 @@
 <div id="modal">
     <div class="modal-box">
         <h3 style="margin:0">削除確認</h3>
-        <p style="font-size:12px; color:#666">パスコードを入力してください</p>
-        <input type="password" id="pass-input" placeholder="****">
+        <input type="password" id="pass-input" placeholder="パスコード" style="width:100%; padding:10px; margin:15px 0; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
         <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="closeModal()">キャンセル</button>
-            <button class="btn btn-del" onclick="confirmDelete()">削除実行</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    let currentId = null;
-    let currentEl = null;
-
-    // アップロード
-    async function uploadFile(input) {
-        const file = input.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const base64 = e.target.result.split(',')[1];
-            await fetch(CONFIG.GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ type: 'upload', filename: file.name, contentType: file.type, data: base64 }) 
-            });
-            location.reload();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // 削除処理
-    function openDel(id, el) {
-        currentId = id; currentEl = el;
-        document.getElementById('modal').style.display = 'flex';
-    }
-    function closeModal() {
-        document.getElementById('modal').style
+            <button class="btn" onclick="closeModal()">キャンセル</button
