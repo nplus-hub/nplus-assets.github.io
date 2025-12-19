@@ -6,9 +6,8 @@
     <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
-        // --- 設定エリア ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", // 自身のURL
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -24,17 +23,17 @@
         /* プレビューエリア：薄い背景色 #eaedef */
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* GitHub文章プレビュー：背景なし、文字のみ */
-        .text-view { 
-            width: 100%; height: 100%; padding: 12px; box-sizing: border-box;
+        /* GitHub文章プレビュー用：自前のdivとして描画 */
+        .text-preview-area { 
+            width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            background: transparent; text-align: left; line-height: 1.4;
-            font-family: monospace; z-index: 10;
+            text-align: left; line-height: 1.5; font-family: 'Courier New', monospace;
+            background: transparent; z-index: 10;
         }
 
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
         .fallback { text-align: center; z-index: 1; }
-        .fallback-emoji { font-size: 50px; line-height: 1; }
+        .fallback-emoji { font-size: 50px; }
         .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; height: 3em; overflow: hidden; }
@@ -116,24 +115,28 @@
                     el.src = url; el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
                     el.className = 'preview-content'; pb.appendChild(el);
                 } else if (isText) {
-                    // GitHub文章のみ、Viewerを使わず直接テキストを表示
-                    fetch(url).then(r => r.text()).then(t => {
-                        const div = document.createElement('div');
-                        div.className = 'text-view';
-                        div.textContent = t.substring(0, 500);
-                        pb.appendChild(div);
-                    });
+                    // GitHubの文章ファイルを直接フェッチ（iframe不使用）
+                    fetch(url)
+                        .then(r => r.ok ? r.text() : Promise.reject())
+                        .then(text => {
+                            const div = document.createElement('div');
+                            div.className = 'text-preview-area';
+                            div.textContent = text.substring(0, 800); // 冒頭を表示
+                            pb.appendChild(div);
+                        })
+                        .catch(() => { /* 失敗時はfallbackアイコンのままにする */ });
                 } else {
+                    // その他（PDF等）は Viewer を使用
                     const el = document.createElement('iframe');
                     el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                    el.className = 'preview-content'; pb.appendChild(el);
+                    el.className = 'preview-content';
+                    pb.appendChild(el);
                 }
             }
         }, 100);
     }
 
     window.onload = () => {
-        // GitHub API取得（成功実績のあるパスに固定）
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
@@ -144,15 +147,14 @@
                         }
                     });
                 }
-            }).catch(e => console.error("GitHub Error"));
+            }).catch(e => console.error("GitHub API失敗"));
 
-        // Drive取得
         if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('https')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())
                 .then(data => { 
                     if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
-                }).catch(e => console.error("Drive Error"));
+                }).catch(e => console.error("Drive取得失敗"));
         }
     };
 </script>
