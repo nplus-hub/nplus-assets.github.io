@@ -128,42 +128,14 @@
                     el = document.createElement('img');
                     el.src = url;
                 } else {
-                    // GitHub文章プレビュー：より安定度の高いrawURL直接指定（pdf/txt等に対応）
+                    // GitHub文章：最も初期に動作していたシンプルなGoogle Viewer形式に戻しました
                     el = document.createElement('iframe');
-                    el.src = url;
+                    el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
                 }
             }
 
             if (el) {
                 el.className = 'preview-content';
+                el.onload = () => { /* 読み込み成功 */ };
                 el.onerror = () => { el.style.display = 'none'; };
                 pb.appendChild(el);
-            }
-        }, 100);
-    }
-
-    window.onload = () => {
-        const githubApiUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/?t=${new Date().getTime()}`;
-        fetch(githubApiUrl)
-            .then(res => res.ok ? res.json() : Promise.reject('GitHub Load Failed'))
-            .then(data => {
-                if (Array.isArray(data)) {
-                    data.forEach(f => {
-                        if (f.type === 'file' && f.name !== 'index.html') {
-                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
-                        }
-                    });
-                }
-            })
-            .catch(err => console.error(err));
-
-        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
-            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
-                .then(r => r.json())
-                .then(data => { if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); })
-                .catch(e => console.error("Drive Error"));
-        }
-    };
-</script>
-</body>
-</html>
