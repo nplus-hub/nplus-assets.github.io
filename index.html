@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
     <script>
+        // --- 設定エリア (ここを書き換えてください) ---
         const CONFIG = {
             GAS_URL: "https://script.google.com/macros/s/AKfycby6n7Q-dRYnl9dXxZ5fRKDtTHNEijzc25NDXoePAyb-9veUSH3Hvb8GyV-Ti5r306QDSg/exec",
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
@@ -14,13 +15,13 @@
         :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --success: #2da44e; --danger: #cf222e; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 30px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
-        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-        .preview-content { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10; border: none; object-fit: contain; }
-        .fallback { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
-        .fallback-emoji { font-size: 40px; }
-        .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-top: 5px; }
+        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
+        .fallback { text-align: center; z-index: 1; }
+        .fallback-emoji { font-size: 40px; display: block; }
+        .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; height: 3em; overflow: hidden; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
@@ -49,22 +50,19 @@
         <h3>削除確認</h3>
         <input type="password" id="pass-input" placeholder="パスコード" style="width:100%; padding:10px; margin:15px 0; border:1px solid #ddd; border-radius:6px;">
         <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="closeModal()">戻る</button>
+            <button class="btn" onclick="document.getElementById('modal').style.display='none'">戻る</button>
             <button class="btn btn-del" onclick="confirmDelete()">削除</button>
         </div>
     </div>
 </div>
 
 <script>
-    let currentDelId = null;
-    let currentDelEl = null;
+    let currentDelId = null, currentDelEl = null;
 
-    function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    
     async function confirmDelete() {
         const pass = document.getElementById('pass-input').value;
         const res = await fetch(`${CONFIG.GAS_URL}?delId=${currentDelId}&pass=${pass}`);
-        if (await res.text() === "success") { currentDelEl.remove(); closeModal(); } else { alert("失敗"); }
+        if (await res.text() === "success") { currentDelEl.remove(); document.getElementById('modal').style.display='none'; } else { alert("失敗"); }
     }
 
     async function uploadFile(input) {
@@ -80,47 +78,5 @@
 
     function createCard(name, url, source, color, isDrive, fileId) {
         const lower = name.toLowerCase();
-        const ext = name.split('.').pop().toUpperCase();
         const is3D = lower.endsWith('.glb');
-        const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
-        
-        let emoji = is3D ? '📦' : (isImage ? '🖼️' : '📄');
-        
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <div class="preview-box">
-                <div class="badge" style="background:${color}">${source}</div>
-                <div class="fallback">
-                    <span class="fallback-emoji">${emoji}</span>
-                    <span class="fallback-ext">${ext}</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="file-name">${name}</div>
-                <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URL</button>
-                    ${isDrive ? `<button class="btn btn-del" onclick="currentDelId='${fileId}'; currentDelEl=this.closest('.card'); document.getElementById('modal').style.display='flex';">削除</button>` : ''}
-                </div>
-            </div>`;
-        document.getElementById('gallery').appendChild(card);
-
-        const previewBox = card.querySelector('.preview-box');
-        
-        // --- プレビュー生成 (Google Driveは iframe 方式を徹底) ---
-        setTimeout(() => {
-            try {
-                if (isDrive) {
-                    // GLBだけは model-viewer、それ以外（画像・文章）はすべて安定の iframe プレビュー
-                    if (is3D) {
-                        const mv = document.createElement('model-viewer');
-                        mv.className = 'preview-content';
-                        mv.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
-                        mv.setAttribute('camera-controls', '');
-                        mv.setAttribute('auto-rotate', '');
-                        mv.setAttribute('crossorigin', 'anonymous');
-                        previewBox.appendChild(mv);
-                    } else {
-                        const ifr = document.createElement('iframe');
-                        ifr.className = 'preview-content';
-                        ifr.src = `https://
+        const isImage = ['jpg','jpeg','
