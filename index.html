@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=ここに画像のIDを貼ってください">
+    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
         // --- 設定エリア ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", // あなたのURLに差し替えてください
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -21,13 +21,11 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア：背景色 #eaedef */
+        /* プレビューエリア：ご指示の薄い背景色 #eaedef を適用 */
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        
-        /* プレビューコンテンツ：透過を許可し、背景色を親に合わせる */
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; }
         
-        .fallback { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+        .fallback { text-align: center; z-index: 1; }
         .fallback-emoji { font-size: 50px; line-height: 1; }
         .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
@@ -35,17 +33,13 @@
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .btn-group { display: flex; gap: 8px; }
         .btn { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-del { color: var(--danger); border-color: var(--danger); }
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
-        .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
     </style>
 </head>
 <body>
 
 <header>
     <div style="font-weight:bold; font-size:1.2rem;">Asset Manager Pro</div>
-    <div style="display: flex; align-items: center;">
-        <a id="github-link" target="_blank" style="background:var(--info); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold; text-decoration:none; margin-right:10px; font-size:12px;">GitHub管理画面</a>
+    <div style="display: flex;">
         <input type="file" id="up" style="display:none" onchange="uploadFile(this)">
         <button onclick="document.getElementById('up').click()" style="background:var(--success); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">Drive保存</button>
         <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer; margin-left:10px;">再読込</button>
@@ -55,6 +49,17 @@
 <div id="gallery" class="container"></div>
 
 <script>
+    async function uploadFile(input) {
+        const file = input.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1];
+            await fetch(CONFIG.GAS_URL, { method: "POST", body: JSON.stringify({ type: 'upload', filename: file.name, contentType: file.type, data: base64 }) });
+            location.reload();
+        };
+        reader.readAsDataURL(file);
+    }
+
     function createCard(name, url, source, color, isDrive, fileId) {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
@@ -67,14 +72,14 @@
             <div class="preview-box">
                 <div class="badge" style="background:${color}">${source}</div>
                 <div class="fallback">
-                    <span class="fallback-emoji">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span>
+                    <span class="fallback-emoji">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br>
                     <span class="fallback-ext">${ext}</span>
                 </div>
             </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
                 <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URL</button>
+                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URLコピー</button>
                 </div>
             </div>`;
         document.getElementById('gallery').appendChild(card);
@@ -99,11 +104,10 @@
                 } else if (isImage) {
                     el = document.createElement('img');
                     el.src = url;
+                    el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
                 } else {
-                    // 文章プレビュー：iframeにallowtransparencyを付与し、背景を透過しやすくしました
                     el = document.createElement('iframe');
                     el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                    el.setAttribute('allowtransparency', 'true');
                 }
             }
             if (el) {
@@ -114,16 +118,27 @@
     }
 
     window.onload = () => {
-        const githubApiUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`;
-        fetch(githubApiUrl).then(res => res.json()).then(data => {
-            if (Array.isArray(data)) data.forEach(f => {
-                if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
-            });
-        });
-        if (CONFIG.GAS_URL.startsWith('http')) {
-            fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
-                if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-            });
+        // GitHub API：末尾のスラッシュ有無による取得漏れを防ぐ
+        const githubUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents`;
+        fetch(githubUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(f => {
+                        if (f.type === 'file' && f.name !== 'index.html') {
+                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
+                        }
+                    });
+                }
+            }).catch(e => console.error("GitHub取得失敗"));
+
+        // Drive取得
+        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('https')) {
+            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
+                .then(r => r.json())
+                .then(data => { 
+                    if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
+                }).catch(e => console.error("Drive取得失敗"));
         }
     };
 </script>
