@@ -2,8 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=ここに画像のIDを貼ってください">
+    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
         // --- 設定エリア ---
@@ -21,31 +22,25 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア：背景色を #eaedef に固定 */
-        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        
-        /* iframe自体には背景色をつけず、親の背景を活かす */
+        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
         
-        .fallback { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
-        .fallback-emoji { font-size: 50px; line-height: 1; }
-        .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
+        .fallback { text-align: center; z-index: 1; }
+        .fallback-emoji { font-size: 50px; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; height: 3em; overflow: hidden; }
+        .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
-        .btn-group { display: flex; gap: 8px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-del { color: var(--danger); border-color: var(--danger); }
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
-        .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
+        .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; }
     </style>
 </head>
 <body>
 
 <header>
     <div style="font-weight:bold; font-size:1.2rem;">Asset Manager Pro</div>
-    <div style="display: flex; align-items: center;">
-        <a id="github-link" target="_blank" style="background:var(--info); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold; text-decoration:none; margin-right:10px; font-size:12px;">GitHub管理画面</a>
+    <div style="display: flex;">
         <input type="file" id="up" style="display:none" onchange="uploadFile(this)">
         <button onclick="document.getElementById('up').click()" style="background:var(--success); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">Drive保存</button>
         <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer; margin-left:10px;">再読込</button>
@@ -54,26 +49,8 @@
 
 <div id="gallery" class="container"></div>
 
-<div id="modal">
-    <div class="modal-box">
-        <h3 style="margin:0">削除確認</h3>
-        <input type="password" id="pass-input" placeholder="パスコードを入力" style="width:100%; padding:8px; margin:15px 0;">
-        <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="document.getElementById('modal').style.display='none'">戻る</button>
-            <button class="btn btn-del" onclick="confirmDelete()">削除</button>
-        </div>
-    </div>
-</div>
-
 <script>
-    let currentId = null, currentEl = null;
-    document.getElementById('github-link').href = `https://github.com/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}`;
-
-    async function confirmDelete() {
-        const pass = document.getElementById('pass-input').value;
-        const res = await fetch(`${CONFIG.GAS_URL}?delId=${currentId}&pass=${pass}`);
-        if (await res.text() === "success") { currentEl.remove(); document.getElementById('modal').style.display='none'; } else { alert("失敗"); }
-    }
+    let currentId = null;
 
     async function uploadFile(input) {
         const file = input.files[0]; if (!file) return;
@@ -98,19 +75,19 @@
             <div class="preview-box">
                 <div class="badge" style="background:${color}">${source}</div>
                 <div class="fallback">
-                    <span class="fallback-emoji">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span>
-                    <span class="fallback-ext">${ext}</span>
+                    <span class="fallback-emoji">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br>
+                    <small>${ext}</small>
                 </div>
             </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
                 <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URL</button>
-                    ${isDrive ? `<button class="btn btn-del" onclick="currentId='${fileId}'; currentEl=this.closest('.card'); document.getElementById('modal').style.display='flex';">削除</button>` : ''}
+                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URLコピー</button>
                 </div>
             </div>`;
         document.getElementById('gallery').appendChild(card);
 
+        // 描画を確実にするため少し遅延させてプレビューを生成
         const pb = card.querySelector('.preview-box');
         setTimeout(() => {
             let el = null;
@@ -119,9 +96,55 @@
                     el = document.createElement('model-viewer');
                     el.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
                     el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
-                    el.setAttribute('crossorigin', 'anonymous');
                 } else {
                     el = document.createElement('iframe');
                     el.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 }
             } else {
+                if (is3D) {
+                    el = document.createElement('model-viewer');
+                    el.src = url;
+                    el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
+                } else if (isImage) {
+                    el = document.createElement('img');
+                    el.src = url;
+                    el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
+                } else {
+                    el = document.createElement('iframe');
+                    el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                }
+            }
+            if (el) {
+                el.className = 'preview-content';
+                pb.appendChild(el);
+            }
+        }, 100);
+    }
+
+    // メイン実行部
+    window.onload = () => {
+        // GitHubから取得
+        fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(f => {
+                        if (f.type === 'file' && f.name !== 'index.html') {
+                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
+                        }
+                    });
+                }
+            }).catch(e => console.error("GitHub取得失敗"));
+
+        // Driveから取得
+        if (CONFIG.GAS_URL.includes("https")) {
+            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
+                .then(r => r.json())
+                .then(data => { 
+                    if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
+                }).catch(e => console.error("Drive取得失敗"));
+        }
+    };
+</script>
+</body>
+</html>
