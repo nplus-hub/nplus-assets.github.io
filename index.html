@@ -6,8 +6,9 @@
     <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
+        // --- 設定エリア ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", // 自身のURL
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -22,14 +23,14 @@
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* 文章プレビュー用のスタイル：背景なし、パディングあり */
-        .text-preview { 
-            width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
+        /* 文章プレビュー用：GitHub専用。背景なしで文字だけ表示 */
+        .text-content-view {
+            width: 100%; height: 100%; padding: 12px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            text-align: left; line-height: 1.4; font-family: monospace;
-            background: transparent; border: none; z-index: 10;
+            background: transparent; border: none; text-align: left; line-height: 1.4;
+            font-family: 'Courier New', Courier, monospace; z-index: 10;
         }
-        
+
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
         .fallback { text-align: center; z-index: 1; }
         .fallback-emoji { font-size: 50px; line-height: 1; }
@@ -71,7 +72,7 @@
         const ext = name.split('.').pop().toUpperCase();
         const is3D = lower.endsWith('.glb');
         const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
-        const isText = ['txt','md','js','css','html','json'].some(e => lower.endsWith(e));
+        const isText = ['txt','md','html','css','js','json'].some(e => lower.endsWith(e));
         
         const card = document.createElement('div');
         card.className = 'card';
@@ -85,76 +86,4 @@
             </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
-                <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URLコピー</button>
-                </div>
-            </div>`;
-        document.getElementById('gallery').appendChild(card);
-
-        const pb = card.querySelector('.preview-box');
-        setTimeout(() => {
-            let el = null;
-            if (isDrive) {
-                if (is3D) {
-                    el = document.createElement('model-viewer');
-                    el.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
-                    el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
-                } else {
-                    el = document.createElement('iframe');
-                    el.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                    el.className = 'preview-content';
-                }
-            } else {
-                if (is3D) {
-                    el = document.createElement('model-viewer');
-                    el.src = url;
-                    el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
-                    el.className = 'preview-content';
-                } else if (isImage) {
-                    el = document.createElement('img');
-                    el.src = url;
-                    el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
-                    el.className = 'preview-content';
-                } else if (isText) {
-                    // GitHubのテキストファイルを直接取得して表示
-                    fetch(url).then(res => res.text()).then(text => {
-                        const pre = document.createElement('div');
-                        pre.className = 'text-preview';
-                        pre.textContent = text.substring(0, 500); // 最初の500文字を表示
-                        pb.appendChild(pre);
-                    });
-                } else {
-                    el = document.createElement('iframe');
-                    el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                    el.className = 'preview-content';
-                }
-            }
-            if (el) pb.appendChild(el);
-        }, 100);
-    }
-
-    window.onload = () => {
-        const githubUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents`;
-        fetch(githubUrl)
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) {
-                    data.forEach(f => {
-                        if (f.type === 'file' && f.name !== 'index.html') {
-                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
-                        }
-                    });
-                }
-            }).catch(e => console.error("GitHub取得失敗"));
-
-        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('https')) {
-            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
-                .then(r => r.json())
-                .then(data => { 
-                    if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
-                }).catch(e => console.error("Drive取得失敗"));
-        }
-    };
-</script>
-</body>
-</html>
+                <div class="btn-group
