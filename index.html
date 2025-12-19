@@ -5,7 +5,7 @@
     <title>Asset Manager Pro</title>
     <script>
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", 
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -16,25 +16,21 @@
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
+        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* プレビューエリア：薄い背景色 #eaedef */
-        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
-        
-        /* テキスト表示エリア：不透明度100%の背景色でフォールバックを隠す */
+        /* テキスト表示エリア */
         .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            background: #eaedef; /* ここを不透明にして背後のアイコンを隠す */
-            text-align: left; font-family: monospace; z-index: 15; position: absolute; top: 0; left: 0;
+            background: #eaedef; text-align: left; font-family: monospace; z-index: 10;
         }
 
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 5; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; height: 3em; overflow: hidden; }
         .btn { padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; width: 100%; }
         
-        /* 背後のアイコン用スタイル */
         .fallback { text-align: center; color: #999; z-index: 1; }
     </style>
 </head>
@@ -60,7 +56,7 @@
         card.innerHTML = `
             <div class="preview-box">
                 <div class="badge" style="background:${color}">${source}</div>
-                <div class="fallback">
+                <div class="fallback-element" style="text-align:center; color:#999;">
                     <span style="font-size:40px;">📄</span><br><small>${ext}</small>
                 </div>
             </div>
@@ -77,23 +73,33 @@
                 fetch(rawUrl)
                     .then(r => r.text())
                     .then(t => {
+                        // 1. テキスト取得に成功したら、まず既存のアイコン要素を削除
+                        const fallback = pb.querySelector('.fallback-element');
+                        if (fallback) fallback.remove(); 
+
+                        // 2. その後、テキスト要素を追加
                         const div = document.createElement('div');
                         div.className = 'text-view';
                         div.textContent = t.substring(0, 800);
                         pb.appendChild(div);
                     }).catch(() => {});
             } else {
+                // 画像や3Dなどの場合も、読み込み開始時にアイコンを消す（任意で調整可）
                 const el = is3D ? document.createElement('model-viewer') : (isImage ? document.createElement('img') : document.createElement('iframe'));
                 if (is3D) {
                     el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
                     el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
                 } else if (isImage && !isDrive) {
                     el.src = url;
-                    el.style.objectFit = 'contain';
                 } else {
                     el.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
                 }
+                
                 el.className = 'preview-content';
+                el.onload = () => {
+                    const fallback = pb.querySelector('.fallback-element');
+                    if (fallback) fallback.remove();
+                };
                 pb.appendChild(el);
             }
         }, 100);
