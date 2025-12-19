@@ -21,7 +21,8 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: white; }
+        /* プレビューコンテンツの基本スタイル（背景色を統一） */
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
         .fallback { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .fallback-emoji { font-size: 50px; line-height: 1; }
         .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
@@ -128,7 +129,6 @@
                     el = document.createElement('img');
                     el.src = url;
                 } else {
-                    // GitHub文章：最も初期に動作していたシンプルなGoogle Viewer形式に戻しました
                     el = document.createElement('iframe');
                     el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
                 }
@@ -136,6 +136,34 @@
 
             if (el) {
                 el.className = 'preview-content';
-                el.onload = () => { /* 読み込み成功 */ };
                 el.onerror = () => { el.style.display = 'none'; };
                 pb.appendChild(el);
+            }
+        }, 100);
+    }
+
+    window.onload = () => {
+        const githubApiUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/?t=${new Date().getTime()}`;
+        fetch(githubApiUrl)
+            .then(res => res.ok ? res.json() : Promise.reject('GitHub Load Failed'))
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(f => {
+                        if (f.type === 'file' && f.name !== 'index.html') {
+                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
+                        }
+                    });
+                }
+            })
+            .catch(err => console.error(err));
+
+        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
+            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
+                .then(r => r.json())
+                .then(data => { if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); })
+                .catch(e => console.error("Drive Error"));
+        }
+    };
+</script>
+</body>
+</html>
