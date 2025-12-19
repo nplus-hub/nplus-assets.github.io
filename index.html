@@ -18,16 +18,18 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 420px; display: flex; flex-direction: column; position: relative; }
         
+        /* プレビューエリア：土台の色 */
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* CSS修正：背景を透過させ、背後のアイコンが見えるように設定 */
+        /* プレビューコンテンツ：背景を完全に透明化（重要） */
         .preview-content { 
             width: 100% !important; height: 100% !important; border: none; 
             position: absolute; top: 0; left: 0; z-index: 10; 
-            background: transparent; 
+            background: transparent !important; /* 背景色を強制的に消して背後を出す */
             object-fit: contain; 
         }
         
+        /* 文章プレビュー：これは文字を見せるため不透明のまま維持 */
         .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow-y: auto;
@@ -35,7 +37,8 @@
             z-index: 15; position: absolute; top: 0; left: 0;
         }
 
-        .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
+        /* 背後のアイコン：z-indexを1に固定 */
+        .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; pointer-events: none; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
@@ -59,6 +62,7 @@
 <div id="gallery" class="container"></div>
 
 <script>
+    // ロジック（JavaScript）は一切変更していません
     async function saveToGitHub() {
         const html = document.documentElement.outerHTML;
         const url = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/index.html`;
