@@ -20,15 +20,13 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
+        
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 410px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア */
+        /* プレビューエリア：重なり構造（下層にアイコン、上層にプレビュー） */
         .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-        
-        /* プレビュー本体 (z-index: 10) */
         model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
         
-        /* 背面アイコン (z-index: 1) */
         .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .fallback-emoji { font-size: 40px; display: block; }
         .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-top: 5px; }
@@ -43,6 +41,7 @@
         
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
         .modal-box { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
+        .modal-box input { width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -61,6 +60,90 @@
 <div id="modal">
     <div class="modal-box">
         <h3 style="margin:0">削除確認</h3>
-        <input type="password" id="pass-input" placeholder="パスコード" style="width:100%; padding:10px; margin:15px 0; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
+        <input type="password" id="pass-input" placeholder="パスコード">
         <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="closeModal()">キャンセル</button
+            <button class="btn" onclick="closeModal()">キャンセル</button>
+            <button class="btn btn-del" onclick="confirmDelete()">削除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentId = null, currentEl = null;
+
+    // --- 削除 ---
+    function openDel(id, el) {
+        currentId = id; currentEl = el;
+        document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('pass-input').value = '';
+    }
+    async function confirmDelete() {
+        const pass = document.getElementById('pass-input').value;
+        const res = await fetch(`${CONFIG.GAS_URL}?delId=${currentId}&pass=${pass}`);
+        if (await res.text() === "success") { currentEl.remove(); closeModal(); } else { alert("失敗"); }
+    }
+
+    // --- アップロード ---
+    async function uploadFile(input) {
+        const file = input.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1];
+            await fetch(CONFIG.GAS_URL, { method: "POST", body: JSON.stringify({ type: 'upload', filename: file.name, contentType: file.type, data: base64 }) });
+            location.reload();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // --- カード表示（最も安定していた以前のロジック） ---
+    function createCard(name, url, source, color, isDrive, fileId) {
+        const lower = name.toLowerCase();
+        const ext = name.split('.').pop().toUpperCase();
+        let emoji = lower.endsWith('.glb') ? '📦' : (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e)) ? '🖼️' : '📄');
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="preview">
+                <div class="badge" style="background:${color}">${source}</div>
+                <div class="fallback-box">
+                    <span class="fallback-emoji">${emoji}</span>
+                    <span class="fallback-ext">${ext}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="file-name">${name}</div>
+                <div class="btn-group">
+                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://drive.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">コピー</button>
+                    ${isDrive ? `<button class="btn btn-del" onclick="openDel('${fileId}', this.closest('.card'))">削除</button>` : ''}
+                </div>
+            </div>`;
+        document.getElementById('gallery').appendChild(card);
+
+        const previewArea = card.querySelector('.preview');
+        // 各要素の作成（以前の成功バージョン）
+        if (lower.endsWith('.glb')) {
+            const mv = document.createElement('model-viewer');
+            mv.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+            mv.setAttribute('camera-controls', ''); mv.setAttribute('auto-rotate', '');
+            previewArea.appendChild(mv);
+        } else if (isDrive) {
+            const ifr = document.createElement('iframe');
+            ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
+            previewArea.appendChild(ifr);
+        } else if (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e))) {
+            const img = document.createElement('img');
+            img.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+            previewArea.appendChild(img);
+        }
+    }
+
+    // --- 初期表示（シンプルに徹する） ---
+    window.onload = () => {
+        // Drive表示
+        fetch(`${CONFIG.GAS_URL}?getFiles=true`)
+            .then(r => r.json())
+            .then(data => data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true,
