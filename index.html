@@ -22,11 +22,11 @@
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* プレビュー要素の共通設定 */
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
+        /* プレビュー要素 */
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; }
         img.preview-content { object-fit: contain; }
         
-        /* テキスト表示：背景色を背景と同じにしてアイコンを隠す */
+        /* テキスト表示：背景を塗りつぶしてアイコンを隠す */
         .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
@@ -34,7 +34,8 @@
             position: absolute; top: 0; left: 0;
         }
 
-        .fallback-element { text-align: center; color: #999; z-index: 1; }
+        /* 背後のアイコン：常にそこに存在し、上が透明なら見える */
+        .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; height: 3em; overflow: hidden; }
@@ -77,9 +78,8 @@
         const pb = card.querySelector('.preview-box');
         
         setTimeout(() => {
-            let el = null;
+            // --- GitHubテキスト: 直接描画 ---
             if (!isDrive && isText) {
-                // GitHub テキスト: 直接フェッチ
                 const rawUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
                 fetch(rawUrl).then(r => r.text()).then(t => {
                     const div = document.createElement('div');
@@ -90,7 +90,8 @@
                 return;
             }
 
-            // 画像、3D、または Drive
+            // --- 画像、3D、iframe (Drive含む) ---
+            let el = null;
             if (is3D) {
                 el = document.createElement('model-viewer');
                 el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
@@ -106,21 +107,19 @@
 
             if (el) {
                 el.className = 'preview-content';
-                // 読み込み完了またはエラー時にアイコンの重なりを制御
-                const clearFallback = () => {
+                // プレビューが成功して読み込まれたら、アイコンを隠す
+                const hideFallback = () => {
                     const fb = pb.querySelector('.fallback-element');
-                    if (fb) fb.style.display = 'none';
+                    if (fb) fb.style.visibility = 'hidden';
                 };
-                el.onload = clearFallback;
-                // model-viewer用のイベント
-                el.addEventListener('load', clearFallback);
+                el.onload = hideFallback;
+                el.addEventListener('load', hideFallback);
                 pb.appendChild(el);
             }
         }, 100);
     }
 
     window.onload = () => {
-        // GitHub API
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
@@ -128,7 +127,6 @@
                     if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
                 });
             });
-        // Google Drive API
         if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())
