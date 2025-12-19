@@ -2,132 +2,57 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - 削除機能復元版</title>
+    <title>Asset Manager Pro</title>
     <script>
-        // --- 設定（あなたの環境に合わせて書き換えてください） ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", // 削除機能付きのGAS URL
-            GITHUB: {
-                USER: "nplus-hub",
-                REPO: "my-assets",
-                TOKEN: "YOUR_GITHUB_TOKEN"
-            }
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", 
+            GITHUB: { USER: "nplus-hub", REPO: "my-assets", TOKEN: "YOUR_GITHUB_TOKEN" }
         };
     </script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --primary: #24292f; --bg: #f6f8fa; --card: #ffffff; --danger: #cf222e; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--primary); }
-        header { background: var(--primary); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --danger: #cf222e; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
+        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 24px; max-width: 1400px; margin: 0 auto; }
-        .card { background: var(--card); border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; position: relative; height: 380px; display: flex; flex-direction: column; transition: transform 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-
-        /* プレビューエリア：背後にアイコンを配置し、失敗時にも見えるようにする */
-        .preview-area { width: 100%; height: 200px; background: #f0f2f5; position: relative; border-bottom: 1px solid #d0d7de; display: flex; align-items: center; justify-content: center; }
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 2; background: transparent; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
+        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 420px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビュー不可時のフォールバック (📦アイコンと拡張子) */
-        .fallback-info { position: absolute; z-index: 1; text-align: center; color: #8c959f; pointer-events: none; }
-        .fallback-icon { font-size: 40px; display: block; margin-bottom: 4px; }
-        .fallback-ext { font-size: 12px; font-weight: bold; text-transform: uppercase; background: #afb8c1; color: white; padding: 2px 6px; border-radius: 4px; }
-
-        /* 削除（ゴミ箱）ボタン：左上に固定 */
-        .delete-btn { position: absolute; top: 8px; left: 8px; z-index: 10; background: rgba(207, 34, 46, 0.85); color: white; border: none; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-        .delete-btn:hover { background: var(--danger); }
-
-        .badge { position: absolute; top: 8px; right: 8px; z-index: 5; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
+        /* プレビューエリア：背後にアイコンを物理的に配置 */
+        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; }
         
-        .card-info { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: 600; word-break: break-all; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .action-btn { width: 100%; padding: 6px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .action-btn:hover { background: #f3f4f6; }
+        /* 3D不可時・読み込み時用のアイコン（z-index:1） */
+        .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
+        
+        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
+        
+        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .file-name { font-size: 13px; font-weight: 600; word-break: break-all; height: 3em; overflow: hidden; color: #24292f; }
+        
+        /* コピーボタンと削除ボタンを横並びにする（ご指示通りの配置） */
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 11px; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background: #f3f4f6; }
+        .btn-del { border-color: #f85149; color: #f85149; }
+        .btn-del:hover { background: #ffeef0; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight:bold; font-size:18px;">Asset Manager Pro</div>
-    <button onclick="saveCurrentPage()" style="background:#2ea44f; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer;">GitHubに保存</button>
+    <div style="font-weight:bold; font-size:1.1rem;">Asset Manager Pro</div>
+    <div style="display:flex; gap:10px;">
+        <button onclick="saveToGitHub()" style="background:#2ea44f; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">GitHubに保存</button>
+        <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer;">再読込</button>
+    </div>
 </header>
 
 <div id="gallery" class="container"></div>
 
 <script>
-    // Google Drive ファイルの削除処理 (復元)
-    async function deleteDriveFile(fileId, element) {
-        if (!confirm('このファイルをGoogle Driveから完全に削除してもよろしいですか？')) return;
-        
-        element.style.opacity = '0.5';
-        element.style.pointerEvents = 'none';
-
-        try {
-            const response = await fetch(`${CONFIG.GAS_URL}?deleteFile=${fileId}`);
-            const result = await response.json();
-            
-            if (result.status === "success") {
-                element.remove();
-                console.log('Deleted:', fileId);
-            } else {
-                throw new Error(result.message);
-            }
-        } catch (error) {
-            alert('削除に失敗しました: ' + error.message);
-            element.style.opacity = '1';
-            element.style.pointerEvents = 'auto';
-        }
-    }
-
-    // カード生成 (聖域：HTML構造を物理的に定義)
-    function createCard(file, source, color) {
-        const lowerName = file.name.toLowerCase();
-        const ext = file.name.split('.').pop();
-        const is3D = lowerName.endsWith('.glb');
-        const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(lowerName);
-        
-        const card = document.createElement('div');
-        card.className = 'card';
-        
-        // 削除ボタンはDriveファイルのみに設置（GitHubは安全のため手動推奨）
-        const deleteButton = source === 'Drive' ? 
-            `<button class="delete-btn" title="削除" onclick="deleteDriveFile('${file.id}', this.closest('.card'))">🗑</button>` : '';
-
-        // プレビュー用タグの選択
-        let previewTag = '';
-        if (is3D) {
-            const url = source === 'Drive' ? `https://docs.google.com/uc?export=download&id=${file.id}` : file.download_url;
-            previewTag = `<model-viewer class="preview-content" src="${url}" camera-controls auto-rotate></model-viewer>`;
-        } else {
-            const url = source === 'Drive' ? `https://drive.google.com/file/d/${file.id}/preview` : file.download_url;
-            previewTag = `<iframe class="preview-content" src="${url}" loading="lazy"></iframe>`;
-        }
-
-        card.innerHTML = `
-            <div class="preview-area">
-                ${deleteButton}
-                <div class="badge" style="background:${color}">${source}</div>
-                <div class="fallback-info">
-                    <span class="fallback-icon">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span>
-                    <span class="fallback-ext">${ext}</span>
-                </div>
-                ${previewTag}
-            </div>
-            <div class="card-info">
-                <div class="file-name" title="${file.name}">${file.name}</div>
-                <button class="action-btn" onclick="copyToClipboard('${source === 'Drive' ? 'https://docs.google.com/uc?id=' + file.id : file.download_url}')">URLをコピー</button>
-            </div>
-        `;
-        document.getElementById('gallery').appendChild(card);
-    }
-
-    // クリップボードコピー
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
-    }
-
-    // GitHubへ自分自身を保存
-    async function saveCurrentPage() {
+    // GitHubへの自己保存機能（聖域）
+    async function saveToGitHub() {
         const html = document.documentElement.outerHTML;
         const url = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/index.html`;
         try {
@@ -136,29 +61,71 @@
             const update = await fetch(url, {
                 method: "PUT",
                 headers: { "Authorization": `token ${CONFIG.GITHUB.TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Update asset manager", content: btoa(unescape(encodeURIComponent(html))), sha: data.sha })
+                body: JSON.stringify({ message: "Update UI", content: btoa(unescape(encodeURIComponent(html))), sha: data.sha })
             });
-            if (update.ok) alert("保存しました");
-        } catch (e) { alert("GitHub保存エラー"); }
+            if (update.ok) alert("GitHubに保存完了");
+        } catch (e) { alert("保存エラー: " + e.message); }
     }
 
-    // 初期読み込み
+    // Google Drive ファイル削除機能（復元）
+    async function deleteDriveFile(fileId, element) {
+        if (!confirm('このファイルをGoogle Driveから削除（ゴミ箱へ移動）しますか？')) return;
+        try {
+            const res = await fetch(`${CONFIG.GAS_URL}?deleteFile=${fileId}`);
+            if (res.ok) { 
+                element.remove(); 
+                alert("削除しました"); 
+            } else {
+                alert("削除に失敗しました");
+            }
+        } catch (e) { alert("通信エラーが発生しました"); }
+    }
+
+    function createCard(name, url, source, color, isDrive, fileId) {
+        const lower = name.toLowerCase();
+        const ext = name.split('.').pop().toUpperCase();
+        const is3D = lower.endsWith('.glb');
+        const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="preview-box">
+                <div class="badge" style="background:${color}">${source}</div>
+                <div class="fallback-element">
+                    <span style="font-size:40px;">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br><small>${ext}</small>
+                </div>
+                ${is3D ? 
+                    `<model-viewer class="preview-content" src="${isDrive ? 'https://docs.google.com/uc?export=download&id='+fileId : url}" camera-controls auto-rotate></model-viewer>` :
+                    `<iframe class="preview-content" src="${isDrive ? 'https://drive.google.com/file/d/'+fileId+'/preview' : (isImage ? url : 'https://docs.google.com/viewer?url='+encodeURIComponent(url)+'&embedded=true')}"></iframe>`
+                }
+            </div>
+            <div class="card-body">
+                <div class="file-name" title="${name}">${name}</div>
+                <div class="btn-group">
+                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?id='+fileId : url}').then(()=>alert('コピー完了'))">URLコピー</button>
+                    ${isDrive ? `<button class="btn btn-del" onclick="deleteDriveFile('${fileId}', this.closest('.card'))">削除</button>` : ''}
+                </div>
+            </div>`;
+        document.getElementById('gallery').appendChild(card);
+    }
+
     window.onload = () => {
-        // GitHubから読み込み
+        // GitHubからファイル取得
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
-                if(Array.isArray(data)) data.forEach(f => {
-                    if(f.type === 'file' && f.name !== 'index.html') createCard(f, 'GitHub', '#24292f');
+                if (Array.isArray(data)) data.forEach(f => {
+                    if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false, f.sha);
                 });
             });
-
-        // Google Driveから読み込み (GAS経由)
+        
+        // Google Driveからファイル取得
         if (CONFIG.GAS_URL) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
-                .then(res => res.json())
-                .then(data => {
-                    if(Array.isArray(data)) data.forEach(f => createCard(f, 'Drive', '#34a853'));
+                .then(r => r.json())
+                .then(data => { 
+                    if (Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
                 });
         }
     };
