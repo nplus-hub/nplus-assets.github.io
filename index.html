@@ -6,9 +6,8 @@
     <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
-        // --- 設定エリア ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", // あなたのURLに差し替えてください
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
@@ -21,10 +20,17 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア：ご指示の薄い背景色 #eaedef を適用 */
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; }
         
+        /* 文章プレビュー用のスタイル：背景なし、パディングあり */
+        .text-preview { 
+            width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
+            font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
+            text-align: left; line-height: 1.4; font-family: monospace;
+            background: transparent; border: none; z-index: 10;
+        }
+        
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
         .fallback { text-align: center; z-index: 1; }
         .fallback-emoji { font-size: 50px; line-height: 1; }
         .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
@@ -65,6 +71,7 @@
         const ext = name.split('.').pop().toUpperCase();
         const is3D = lower.endsWith('.glb');
         const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
+        const isText = ['txt','md','js','css','html','json'].some(e => lower.endsWith(e));
         
         const card = document.createElement('div');
         card.className = 'card';
@@ -95,30 +102,38 @@
                 } else {
                     el = document.createElement('iframe');
                     el.src = `https://drive.google.com/file/d/${fileId}/preview`;
+                    el.className = 'preview-content';
                 }
             } else {
                 if (is3D) {
                     el = document.createElement('model-viewer');
                     el.src = url;
                     el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
+                    el.className = 'preview-content';
                 } else if (isImage) {
                     el = document.createElement('img');
                     el.src = url;
                     el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
+                    el.className = 'preview-content';
+                } else if (isText) {
+                    // GitHubのテキストファイルを直接取得して表示
+                    fetch(url).then(res => res.text()).then(text => {
+                        const pre = document.createElement('div');
+                        pre.className = 'text-preview';
+                        pre.textContent = text.substring(0, 500); // 最初の500文字を表示
+                        pb.appendChild(pre);
+                    });
                 } else {
                     el = document.createElement('iframe');
                     el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                    el.className = 'preview-content';
                 }
             }
-            if (el) {
-                el.className = 'preview-content';
-                pb.appendChild(el);
-            }
+            if (el) pb.appendChild(el);
         }, 100);
     }
 
     window.onload = () => {
-        // GitHub API：末尾のスラッシュ有無による取得漏れを防ぐ
         const githubUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents`;
         fetch(githubUrl)
             .then(res => res.json())
@@ -132,7 +147,6 @@
                 }
             }).catch(e => console.error("GitHub取得失敗"));
 
-        // Drive取得
         if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('https')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())
